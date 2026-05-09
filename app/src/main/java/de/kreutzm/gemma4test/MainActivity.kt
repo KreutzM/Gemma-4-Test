@@ -1,11 +1,13 @@
 package de.kreutzm.gemma4test
 
 import android.Manifest
+import android.graphics.Bitmap
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -27,9 +30,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import de.kreutzm.gemma4test.image.ImagePreprocessor
 import de.kreutzm.gemma4test.model.GemmaModelConfig
 import de.kreutzm.gemma4test.model.ModelDownloadRequest
 import de.kreutzm.gemma4test.model.ModelDownloadState
@@ -59,11 +65,30 @@ private fun GemmaMvpScreen() {
     val coroutineScope = rememberCoroutineScope()
     var downloadState by remember { mutableStateOf<ModelDownloadState>(ModelDownloadState.Idle) }
     var status by remember { mutableStateOf("Bereit: Modell laden, Foto aufnehmen und später lokal mit LiteRT-LM beschreiben.") }
+    var cameraPermissionGranted by remember { mutableStateOf(false) }
+    var capturedBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var processedPngBytes by remember { mutableStateOf<ByteArray?>(null) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicturePreview(),
+    ) { bitmap ->
+        if (bitmap == null) {
+            status = "Kein Foto aufgenommen."
+            return@rememberLauncherForActivityResult
+        }
+        val scaledBitmap = ImagePreprocessor.scaleToMaxLongEdge(bitmap)
+        val pngBytes = ImagePreprocessor.toPngBytes(scaledBitmap)
+        capturedBitmap = scaledBitmap
+        processedPngBytes = pngBytes
+        status = "Foto vorbereitet: ${scaledBitmap.width} x ${scaledBitmap.height} px, ${pngBytes.size} PNG-Bytes."
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
+        cameraPermissionGranted = granted
         status = if (granted) {
-            "Kamera-Berechtigung erteilt. Nächster Schritt: Fotoaufnahme mit ActivityResultContracts.TakePicturePreview oder CameraX."
+            "Kamera-Berechtigung erteilt. Du kannst jetzt ein Foto aufnehmen."
         } else {
             "Kamera-Berechtigung verweigert. Ohne Kamera kann der MVP kein Foto aufnehmen."
         }
@@ -100,6 +125,24 @@ private fun GemmaMvpScreen() {
                 }
             }
 
+            capturedBitmap?.let { bitmap ->
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Foto", fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(8.dp))
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = "Aufgenommenes Foto",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .sizeIn(maxHeight = 280.dp),
+                            contentScale = ContentScale.Fit,
+                        )
+                        Text("Vorbereitet: ${bitmap.width} x ${bitmap.height} px, ${processedPngBytes?.size ?: 0} PNG-Bytes")
+                    }
+                }
+            }
+
             Button(
                 enabled = downloadState !is ModelDownloadState.Downloading && downloadState !is ModelDownloadState.Starting,
                 onClick = {
@@ -120,7 +163,16 @@ private fun GemmaMvpScreen() {
             Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
                 Text("Kamera-Berechtigung anfordern")
             }
-            Button(onClick = { status = "TODO: LiteRT-LM Engine initialisieren, Bild als PNG-Bytes + Prompt senden." }) {
+            Button(
+                enabled = cameraPermissionGranted,
+                onClick = { cameraLauncher.launch(null) },
+            ) {
+                Text("Foto aufnehmen")
+            }
+            Button(
+                enabled = processedPngBytes != null,
+                onClick = { status = "TODO: LiteRT-LM Engine initialisieren und ${processedPngBytes?.size ?: 0} PNG-Bytes + Prompt senden." },
+            ) {
                 Text("Bild beschreiben")
             }
 
