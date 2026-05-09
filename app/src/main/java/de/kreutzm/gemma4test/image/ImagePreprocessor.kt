@@ -2,7 +2,6 @@ package de.kreutzm.gemma4test.image
 
 import android.graphics.Bitmap
 import java.io.ByteArrayOutputStream
-import kotlin.math.roundToInt
 
 object ImagePreprocessor {
     const val DEFAULT_MAX_LONG_EDGE_PX = 1024
@@ -11,20 +10,14 @@ object ImagePreprocessor {
         source: Bitmap,
         maxLongEdgePx: Int = DEFAULT_MAX_LONG_EDGE_PX,
     ): Bitmap {
-        require(maxLongEdgePx > 0) { "maxLongEdgePx must be positive" }
+        val targetSize = ImageResizePlanner.planScaleToMaxLongEdge(
+            source = ImageSize(source.width, source.height),
+            maxLongEdgePx = maxLongEdgePx,
+        )
 
-        val width = source.width
-        val height = source.height
-        require(width > 0 && height > 0) { "Bitmap dimensions must be positive" }
+        if (targetSize.width == source.width && targetSize.height == source.height) return source
 
-        val longEdge = maxOf(width, height)
-        if (longEdge <= maxLongEdgePx) return source
-
-        val scale = maxLongEdgePx.toFloat() / longEdge.toFloat()
-        val targetWidth = (width * scale).roundToInt().coerceAtLeast(1)
-        val targetHeight = (height * scale).roundToInt().coerceAtLeast(1)
-
-        return Bitmap.createScaledBitmap(source, targetWidth, targetHeight, true)
+        return Bitmap.createScaledBitmap(source, targetSize.width, targetSize.height, true)
     }
 
     fun toPngBytes(bitmap: Bitmap): ByteArray {
