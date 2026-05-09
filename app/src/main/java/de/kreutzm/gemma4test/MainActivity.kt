@@ -36,6 +36,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import de.kreutzm.gemma4test.image.ImagePreprocessor
+import de.kreutzm.gemma4test.inference.GemmaInferenceState
+import de.kreutzm.gemma4test.inference.GemmaVisionEngine
 import de.kreutzm.gemma4test.model.GemmaModelConfig
 import de.kreutzm.gemma4test.model.ModelDownloadRequest
 import de.kreutzm.gemma4test.model.ModelDownloadState
@@ -63,11 +65,15 @@ class MainActivity : ComponentActivity() {
 private fun GemmaMvpScreen() {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val modelRequest = remember { ModelDownloadRequest.gemma4E2B() }
+    val modelFileStore = remember { ModelFileStore.fromContext(context) }
     var downloadState by remember { mutableStateOf<ModelDownloadState>(ModelDownloadState.Idle) }
-    var status by remember { mutableStateOf("Bereit: Modell laden, Foto aufnehmen und später lokal mit LiteRT-LM beschreiben.") }
+    var inferenceState by remember { mutableStateOf<GemmaInferenceState>(GemmaInferenceState.Idle) }
+    var status by remember { mutableStateOf("Bereit: Modell laden, Foto aufnehmen und lokal mit LiteRT-LM beschreiben.") }
     var cameraPermissionGranted by remember { mutableStateOf(false) }
     var capturedBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var processedPngBytes by remember { mutableStateOf<ByteArray?>(null) }
+    var descriptionText by remember { mutableStateOf("") }
 
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicturePreview(),
@@ -80,6 +86,8 @@ private fun GemmaMvpScreen() {
         val pngBytes = ImagePreprocessor.toPngBytes(scaledBitmap)
         capturedBitmap = scaledBitmap
         processedPngBytes = pngBytes
+        descriptionText = ""
+        inferenceState = GemmaInferenceState.Idle
         status = "Foto vorbereitet: ${scaledBitmap.width} x ${scaledBitmap.height} px, ${pngBytes.size} PNG-Bytes."
     }
 
@@ -143,13 +151,26 @@ private fun GemmaMvpScreen() {
                 }
             }
 
+            if (descriptionText.isNotBlank() || inferenceState !is GemmaInferenceState.Idle) {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Beschreibung", fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(8.dp))
+                        Text(inferenceState.toUiText())
+                        if (descriptionText.isNotBlank()) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(descriptionText)
+                        }
+                    }
+                }
+            }
+
             Button(
                 enabled = downloadState !is ModelDownloadState.Downloading && downloadState !is ModelDownloadState.Starting,
                 onClick = {
                     coroutineScope.launch {
-                        val request = ModelDownloadRequest.gemma4E2B()
-                        val downloader = ModelDownloader(ModelFileStore.fromContext(context))
-                        downloader.download(request) { state ->
+                        val downloader = ModelDownloader(modelFileStore)
+                        downloader.download(modelRequest) { state ->
                             withContext(Dispatchers.Main) {
                                 downloadState = state
                                 status = state.toUiText()
@@ -170,8 +191,56 @@ private fun GemmaMvpScreen() {
                 Text("Foto aufnehmen")
             }
             Button(
-                enabled = processedPngBytes != null,
-                onClick = { status = "TODO: LiteRT-LM Engine initialisieren und ${processedPngBytes?.size ?: 0} PNG-Bytes + Prompt senden." },
+                enabled = processedPngBytes != null && inferenceState !is GemmaInferenceState.Running && inferenceState !is GemmaInferenceState.Initializing,
+                onClick = {
+                    val imageBytes = processedPngBytes ?: return@Button
+                    coroutineScope.launch {
+                        val modelFile = modelFileStore.modelFile(modelRequest)
+                        if (!modelFileStore.hasCompleteModel(modelRequest)) {
+                            inferenceState = GemmaInferenceState.Failed("Modell ist noch nicht vollständig geladen.")
+                            status = inferenceState.toUiText()
+                            return@launch
+                        }
+
+                        inferenceState = GemmaInferenceState.Initializing
+                        descriptionText = ""
+                        status = inferenceState.toUiText()
+
+                        GemmaVisionEngine(
+                            context = context.applicationContext,
+                            modelPath = modelFile.absolutePath,
+                        ).use { engine ->
+                            val initResult = engine.initialize()
+                            if (initResult.isFailure) {
+                                val message = initResult.exceptionOrNull()?.message ?: "Initialisierung fehlgeschlagen"
+                                inferenceState = GemmaInferenceState.Failed(message)
+                                status = inferenceState.toUiText()
+                                return@use
+                            }
+
+                            inferenceState = GemmaInferenceState.Running
+                            status = inferenceState.toUiText()
+                            val result = engine.describeImage(imageBytes) { partialText ->
+                                coroutineScope.launch(Dispatchers.Main) {
+                                    descriptionText = partialText
+                                    inferenceState = GemmaInferenceState.Streaming(partialText)
+                                }
+                            }
+                            result.fold(
+                                onSuccess = { text ->
+                                    descriptionText = text
+                                    inferenceState = GemmaInferenceState.Completed(text)
+                                    status = "Beschreibung abgeschlossen."
+                                },
+                                onFailure = { throwable ->
+                                    val message = throwable.message ?: throwable::class.java.simpleName
+                                    inferenceState = GemmaInferenceState.Failed(message)
+                                    status = inferenceState.toUiText()
+                                },
+                            )
+                        }
+                    }
+                },
             ) {
                 Text("Bild beschreiben")
             }
@@ -188,4 +257,13 @@ private fun ModelDownloadState.toUiText(): String = when (this) {
     is ModelDownloadState.Downloading -> "Download: $progressPercent % ($downloadedBytes / $totalBytes Bytes)"
     is ModelDownloadState.Completed -> "Download abgeschlossen: $sizeBytes Bytes"
     is ModelDownloadState.Failed -> "Download fehlgeschlagen: $message"
+}
+
+private fun GemmaInferenceState.toUiText(): String = when (this) {
+    GemmaInferenceState.Idle -> "Noch nicht gestartet"
+    GemmaInferenceState.Initializing -> "LiteRT-LM wird initialisiert"
+    GemmaInferenceState.Running -> "Beschreibung läuft"
+    is GemmaInferenceState.Streaming -> "Beschreibung wird erzeugt"
+    is GemmaInferenceState.Completed -> "Beschreibung abgeschlossen"
+    is GemmaInferenceState.Failed -> "Inferenz fehlgeschlagen: $message"
 }
