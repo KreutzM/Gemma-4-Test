@@ -1,0 +1,13 @@
+# Project-local suggested Codex profile.
+# This file is intentionally non-secret. Developers may override values locally.
+model = "gpt-5.5"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[profiles.android]
+model = "gpt-5.5"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[profiles.android.shell_environment_policy]
+inherit = "core"
