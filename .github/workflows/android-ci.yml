@@ -40,14 +40,21 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.10.2
 
-      - name: Generate Gradle Wrapper if missing
+      - name: Generate Gradle Wrapper if missing or incomplete
         run: |
-          if [ ! -x ./gradlew ]; then
+          if [ ! -x ./gradlew ] || [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
             gradle wrapper --gradle-version 8.10.2 --distribution-type bin
           fi
 
@@ -57,19 +64,19 @@ jobs:
       - name: Check formatting with ktlint when configured
         run: |
           if ./gradlew tasks --all | grep -q '^ktlintCheck'; then
-            ./gradlew ktlintCheck --stacktrace
+            ./gradlew ktlintCheck --stacktrace --no-daemon
           else
             echo "ktlint is not configured yet; skipping. See docs/quality.md."
           fi
 
       - name: Run unit tests
-        run: ./gradlew testDebugUnitTest --stacktrace
+        run: ./gradlew testDebugUnitTest --stacktrace --no-daemon
 
       - name: Run Android lint
-        run: ./gradlew lintDebug --stacktrace
+        run: ./gradlew lintDebug --stacktrace --no-daemon
 
       - name: Assemble debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --stacktrace --no-daemon
 
       - name: Upload lint report
         if: always()
