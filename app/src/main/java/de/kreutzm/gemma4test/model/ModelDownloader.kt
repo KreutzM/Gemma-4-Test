@@ -1,5 +1,6 @@
 package de.kreutzm.gemma4test.model
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -34,6 +35,9 @@ class ModelDownloader(
             val finalState = downloadToPartialFile(request, partial, target, onState)
             onState(finalState)
             finalState
+        } catch (cancellation: CancellationException) {
+            partial.delete()
+            throw cancellation
         } catch (throwable: Throwable) {
             partial.delete()
             val state = ModelDownloadState.Failed(throwable.message ?: throwable::class.java.simpleName)
