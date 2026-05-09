@@ -15,12 +15,15 @@ jobs:
   validate-wrapper:
     name: Validate Gradle Wrapper
     runs-on: ubuntu-latest
-    if: hashFiles('gradle/wrapper/gradle-wrapper.jar') != ''
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Validate wrapper
+        if: hashFiles('gradle/wrapper/gradle-wrapper.jar') != ''
         uses: gradle/actions/wrapper-validation@v4
+      - name: Skip wrapper validation when wrapper is absent
+        if: hashFiles('gradle/wrapper/gradle-wrapper.jar') == ''
+        run: echo "Gradle Wrapper is not committed yet; build job will bootstrap it."
 
   build-test-lint:
     name: Build, unit test, lint
