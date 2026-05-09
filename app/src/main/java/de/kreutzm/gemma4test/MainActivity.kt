@@ -24,12 +24,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import de.kreutzm.gemma4test.model.GemmaModelConfig
+import de.kreutzm.gemma4test.model.ModelDownloadRequest
+import de.kreutzm.gemma4test.model.ModelDownloadState
+import de.kreutzm.gemma4test.model.ModelDownloader
+import de.kreutzm.gemma4test.model.ModelFileStore
 import de.kreutzm.gemma4test.ui.theme.Gemma4TestTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,7 +55,10 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun GemmaMvpScreen() {
-    var status by remember { mutableStateOf("Bereit für Implementierung: Model-Download, Fotoaufnahme und LiteRT-LM-Inferenz.") }
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    var downloadState by remember { mutableStateOf<ModelDownloadState>(ModelDownloadState.Idle) }
+    var status by remember { mutableStateOf("Bereit: Modell laden, Foto aufnehmen und später lokal mit LiteRT-LM beschreiben.") }
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
@@ -84,10 +96,25 @@ private fun GemmaMvpScreen() {
                     Spacer(Modifier.height(8.dp))
                     Text(GemmaModelConfig.fileName)
                     Text("${GemmaModelConfig.sizeBytes} Bytes")
+                    Text("Status: ${downloadState.toUiText()}")
                 }
             }
 
-            Button(onClick = { status = "TODO: ModelDownloader implementieren und Fortschritt anzeigen." }) {
+            Button(
+                enabled = downloadState !is ModelDownloadState.Downloading && downloadState !is ModelDownloadState.Starting,
+                onClick = {
+                    coroutineScope.launch {
+                        val request = ModelDownloadRequest.gemma4E2B()
+                        val downloader = ModelDownloader(ModelFileStore.fromContext(context))
+                        downloader.download(request) { state ->
+                            withContext(Dispatchers.Main) {
+                                downloadState = state
+                                status = state.toUiText()
+                            }
+                        }
+                    }
+                },
+            ) {
                 Text("Modell laden")
             }
             Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
@@ -100,4 +127,13 @@ private fun GemmaMvpScreen() {
             Text(text = status, style = MaterialTheme.typography.bodyMedium)
         }
     }
+}
+
+private fun ModelDownloadState.toUiText(): String = when (this) {
+    ModelDownloadState.Idle -> "Noch nicht geladen"
+    ModelDownloadState.Starting -> "Download wird vorbereitet"
+    is ModelDownloadState.AlreadyAvailable -> "Bereits vorhanden: $sizeBytes Bytes"
+    is ModelDownloadState.Downloading -> "Download: $progressPercent % ($downloadedBytes / $totalBytes Bytes)"
+    is ModelDownloadState.Completed -> "Download abgeschlossen: $sizeBytes Bytes"
+    is ModelDownloadState.Failed -> "Download fehlgeschlagen: $message"
 }
