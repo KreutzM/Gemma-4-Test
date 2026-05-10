@@ -31,12 +31,13 @@ class GemmaVisionEngine(
         runCatching {
             if (engine != null && conversation != null) return@runCatching
 
-            val backend = if (config.preferGpu) Backend.GPU() else Backend.CPU()
+            val (textBackend, visionBackend) = config.backendMode.toLiteRtBackends()
             val engineConfig = EngineConfig(
                 modelPath = modelPath,
-                backend = backend,
-                visionBackend = backend,
+                backend = textBackend,
+                visionBackend = visionBackend,
                 maxNumTokens = config.maxTokens,
+                maxNumImages = config.maxImages,
                 cacheDir = context.cacheDir.absolutePath,
             )
             val initializedEngine = Engine(engineConfig)
@@ -111,5 +112,10 @@ class GemmaVisionEngine(
             engine?.close()
             engine = null
         }
+    }
+
+    private fun GemmaBackendMode.toLiteRtBackends(): Pair<Backend, Backend> = when (this) {
+        GemmaBackendMode.GpuTextGpuVision -> Backend.GPU() to Backend.GPU()
+        GemmaBackendMode.CpuTextCpuVision -> Backend.CPU() to Backend.CPU()
     }
 }
