@@ -10,6 +10,8 @@ class ModelFileStore private constructor(
 
     fun partialFile(request: ModelDownloadRequest): File = fileForSafeName("${request.fileName}.part")
 
+    fun metadataFile(request: ModelDownloadRequest): File = fileForSafeName("${request.fileName}.metadata")
+
     fun ensureModelsDir(): File = modelsDir.also { directory ->
         if (!directory.exists()) {
             check(directory.mkdirs()) { "Could not create model directory: ${directory.absolutePath}" }
@@ -19,7 +21,21 @@ class ModelFileStore private constructor(
 
     fun hasCompleteModel(request: ModelDownloadRequest): Boolean {
         val file = modelFile(request)
-        return file.isFile && file.length() == request.expectedSizeBytes
+        val metadata = ModelDownloadMetadata.readFrom(metadataFile(request))
+        return file.isFile &&
+            file.length() == request.expectedSizeBytes &&
+            metadata?.matches(request) == true
+    }
+
+    fun writeMetadata(request: ModelDownloadRequest) {
+        ModelDownloadMetadata.fromRequest(request).writeTo(metadataFile(request))
+    }
+
+    fun deleteMetadata(request: ModelDownloadRequest) {
+        val metadata = metadataFile(request)
+        if (metadata.exists()) {
+            check(metadata.delete()) { "Could not delete model metadata file: ${metadata.absolutePath}" }
+        }
     }
 
     fun deletePartial(request: ModelDownloadRequest) {
