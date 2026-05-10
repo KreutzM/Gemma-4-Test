@@ -84,14 +84,14 @@ private fun GemmaMvpScreen() {
             status = "Kein Foto aufgenommen."
             return@rememberLauncherForActivityResult
         }
-        val scaledBitmap = ImagePreprocessor.scaleToMaxLongEdge(bitmap)
-        val pngBytes = ImagePreprocessor.toPngBytes(scaledBitmap)
-        capturedBitmap = scaledBitmap
+        val preparedBitmap = ImagePreprocessor.letterboxToSquare(bitmap)
+        val pngBytes = ImagePreprocessor.toPngBytes(preparedBitmap)
+        capturedBitmap = preparedBitmap
         processedPngBytes = pngBytes
         descriptionText = ""
         activeBackendMode = null
         inferenceState = GemmaInferenceState.Idle
-        status = "Foto vorbereitet: ${scaledBitmap.width} x ${scaledBitmap.height} px, ${pngBytes.size} PNG-Bytes."
+        status = "Foto vorbereitet: ${preparedBitmap.width} x ${preparedBitmap.height} px, ${pngBytes.size} PNG-Bytes."
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
