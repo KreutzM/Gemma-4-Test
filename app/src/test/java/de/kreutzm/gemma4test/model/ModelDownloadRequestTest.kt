@@ -13,6 +13,7 @@ class ModelDownloadRequestTest {
         assertEquals(GemmaModelConfig.downloadUrl, request.url)
         assertEquals(GemmaModelConfig.fileName, request.fileName)
         assertEquals(GemmaModelConfig.sizeBytes, request.expectedSizeBytes)
+        assertEquals(GemmaModelConfig.galleryModelCommitHash, request.sourceRevision)
     }
 
     @Test
@@ -23,6 +24,7 @@ class ModelDownloadRequestTest {
                 url = "http://example.invalid/model.litertlm",
                 fileName = "model.litertlm",
                 expectedSizeBytes = 1L,
+                sourceRevision = "revision",
             )
         }
     }
@@ -35,6 +37,20 @@ class ModelDownloadRequestTest {
                 url = "https://example.invalid/model.litertlm",
                 fileName = "model.litertlm",
                 expectedSizeBytes = 0L,
+                sourceRevision = "revision",
+            )
+        }
+    }
+
+    @Test
+    fun rejectsBlankSourceRevision() {
+        assertThrows(IllegalArgumentException::class.java) {
+            ModelDownloadRequest(
+                displayName = "test",
+                url = "https://example.invalid/model.litertlm",
+                fileName = "model.litertlm",
+                expectedSizeBytes = 1L,
+                sourceRevision = " ",
             )
         }
     }
