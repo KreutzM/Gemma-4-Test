@@ -36,6 +36,32 @@ class ImageResizePlannerTest {
     }
 
     @Test
+    fun letterboxesTallPreviewIntoSquareCanvas() {
+        val result = ImageResizePlanner.planLetterboxSquare(
+            source = ImageSize(width = 141, height = 250),
+            squareSizePx = 512,
+        )
+
+        assertEquals(ImageSize(width = 512, height = 512), result.canvasSize)
+        assertEquals(ImageSize(width = 289, height = 512), result.scaledImageSize)
+        assertEquals(111, result.offsetX)
+        assertEquals(0, result.offsetY)
+    }
+
+    @Test
+    fun letterboxesWidePreviewIntoSquareCanvas() {
+        val result = ImageResizePlanner.planLetterboxSquare(
+            source = ImageSize(width = 250, height = 141),
+            squareSizePx = 512,
+        )
+
+        assertEquals(ImageSize(width = 512, height = 512), result.canvasSize)
+        assertEquals(ImageSize(width = 512, height = 289), result.scaledImageSize)
+        assertEquals(0, result.offsetX)
+        assertEquals(111, result.offsetY)
+    }
+
+    @Test
     fun rejectsInvalidSourceSize() {
         assertThrows(IllegalArgumentException::class.java) {
             ImageSize(width = 0, height = 100)
@@ -48,6 +74,16 @@ class ImageResizePlannerTest {
             ImageResizePlanner.planScaleToMaxLongEdge(
                 source = ImageSize(width = 100, height = 100),
                 maxLongEdgePx = 0,
+            )
+        }
+    }
+
+    @Test
+    fun rejectsInvalidLetterboxSize() {
+        assertThrows(IllegalArgumentException::class.java) {
+            ImageResizePlanner.planLetterboxSquare(
+                source = ImageSize(width = 100, height = 100),
+                squareSizePx = 0,
             )
         }
     }
