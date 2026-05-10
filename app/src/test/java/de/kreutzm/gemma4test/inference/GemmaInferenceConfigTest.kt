@@ -11,11 +11,11 @@ class GemmaInferenceConfigTest {
     fun defaultConfigUsesGalleryAlignedVisionValuesWithCpuRetry() {
         val config = GemmaInferenceConfig()
 
-        assertEquals(1024, config.maxTokens)
+        assertEquals(4000, config.maxTokens)
         assertEquals(1, config.maxImages)
-        assertEquals(40, config.topK)
+        assertEquals(64, config.topK)
         assertEquals(0.95, config.topP, 0.0)
-        assertEquals(0.2, config.temperature, 0.0)
+        assertEquals(1.0, config.temperature, 0.0)
         assertEquals(GemmaBackendMode.GpuTextGpuVision, config.backendMode)
         assertTrue(config.retryCpuOnGpuFailure)
         assertFalse(config.prompt.isBlank())
