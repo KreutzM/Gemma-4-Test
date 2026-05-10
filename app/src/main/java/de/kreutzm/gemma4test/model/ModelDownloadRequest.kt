@@ -5,12 +5,14 @@ data class ModelDownloadRequest(
     val url: String,
     val fileName: String,
     val expectedSizeBytes: Long,
+    val sourceRevision: String,
 ) {
     init {
         require(displayName.isNotBlank()) { "displayName must not be blank" }
         require(url.startsWith("https://")) { "Model downloads must use HTTPS" }
         require(fileName.isNotBlank()) { "fileName must not be blank" }
         require(expectedSizeBytes > 0L) { "expectedSizeBytes must be positive" }
+        require(sourceRevision.isNotBlank()) { "sourceRevision must not be blank" }
     }
 
     companion object {
@@ -19,6 +21,7 @@ data class ModelDownloadRequest(
             url = GemmaModelConfig.downloadUrl,
             fileName = GemmaModelConfig.fileName,
             expectedSizeBytes = GemmaModelConfig.sizeBytes,
+            sourceRevision = GemmaModelConfig.galleryModelCommitHash,
         )
     }
 }
