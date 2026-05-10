@@ -29,6 +29,7 @@ class ModelDownloader(
         }
 
         fileStore.deletePartial(request)
+        fileStore.deleteMetadata(request)
         val partial = fileStore.partialFile(request)
 
         try {
@@ -37,9 +38,11 @@ class ModelDownloader(
             finalState
         } catch (cancellation: CancellationException) {
             partial.delete()
+            fileStore.deleteMetadata(request)
             throw cancellation
         } catch (throwable: Throwable) {
             partial.delete()
+            fileStore.deleteMetadata(request)
             val state = ModelDownloadState.Failed(throwable.message ?: throwable::class.java.simpleName)
             onState(state)
             state
@@ -93,6 +96,7 @@ class ModelDownloader(
                 check(target.delete()) { "Could not replace existing model file: ${target.absolutePath}" }
             }
             check(partial.renameTo(target)) { "Could not move downloaded model into place" }
+            fileStore.writeMetadata(request)
 
             return ModelDownloadState.Completed(
                 absolutePath = target.absolutePath,

@@ -16,6 +16,7 @@ class ModelFileStoreTest {
         url = "https://example.invalid/model.litertlm",
         fileName = "model.litertlm",
         expectedSizeBytes = 4L,
+        sourceRevision = "revision-a",
     )
 
     @Test
@@ -29,12 +30,32 @@ class ModelFileStoreTest {
     }
 
     @Test
-    fun detectsCompleteModelByExpectedSize() {
+    fun detectsCompleteModelByExpectedSizeAndMetadata() {
+        val store = ModelFileStore.fromDirectory(temporaryFolder.root)
+        store.ensureModelsDir()
+        store.modelFile(request).writeBytes(byteArrayOf(1, 2, 3, 4))
+        store.writeMetadata(request)
+
+        assertTrue(store.hasCompleteModel(request))
+    }
+
+    @Test
+    fun rejectsModelWithoutMetadata() {
         val store = ModelFileStore.fromDirectory(temporaryFolder.root)
         store.ensureModelsDir()
         store.modelFile(request).writeBytes(byteArrayOf(1, 2, 3, 4))
 
-        assertTrue(store.hasCompleteModel(request))
+        assertFalse(store.hasCompleteModel(request))
+    }
+
+    @Test
+    fun rejectsModelWithStaleMetadata() {
+        val store = ModelFileStore.fromDirectory(temporaryFolder.root)
+        store.ensureModelsDir()
+        store.modelFile(request).writeBytes(byteArrayOf(1, 2, 3, 4))
+        store.writeMetadata(request.copy(sourceRevision = "revision-old"))
+
+        assertFalse(store.hasCompleteModel(request))
     }
 
     @Test
@@ -42,6 +63,7 @@ class ModelFileStoreTest {
         val store = ModelFileStore.fromDirectory(temporaryFolder.root)
         store.ensureModelsDir()
         store.modelFile(request).writeBytes(byteArrayOf(1, 2, 3))
+        store.writeMetadata(request)
 
         assertFalse(store.hasCompleteModel(request))
     }
