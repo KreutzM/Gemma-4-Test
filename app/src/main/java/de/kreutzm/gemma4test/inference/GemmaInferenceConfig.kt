@@ -9,7 +9,7 @@ data class GemmaInferenceConfig(
     val topK: Int = DEFAULT_TOP_K,
     val topP: Double = DEFAULT_TOP_P,
     val temperature: Double = DEFAULT_TEMPERATURE,
-    val preferGpu: Boolean = DEFAULT_PREFER_GPU,
+    val backendMode: GemmaBackendMode = GemmaBackendMode.GpuTextGpuVision,
 ) {
     init {
         require(prompt.isNotBlank()) { "prompt must not be blank" }
@@ -26,9 +26,10 @@ data class GemmaInferenceConfig(
         const val DEFAULT_TOP_K = 40
         const val DEFAULT_TOP_P = 0.95
         const val DEFAULT_TEMPERATURE = 0.2
-
-        // S23+ smoke test logs showed the LiteRT GPU path falling back from OpenCL to OpenGL and
-        // failing in CreateSharedMemoryManager. Keep the MVP conservative and use CPU by default.
-        const val DEFAULT_PREFER_GPU = false
     }
+}
+
+enum class GemmaBackendMode {
+    GpuTextGpuVision,
+    CpuTextCpuVision,
 }
