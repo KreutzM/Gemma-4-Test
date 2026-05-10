@@ -3,11 +3,12 @@ package de.kreutzm.gemma4test.inference
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GemmaInferenceConfigTest {
     @Test
-    fun defaultConfigUsesGalleryAlignedVisionValues() {
+    fun defaultConfigUsesGalleryAlignedVisionValuesWithCpuRetry() {
         val config = GemmaInferenceConfig()
 
         assertEquals(1024, config.maxTokens)
@@ -16,7 +17,14 @@ class GemmaInferenceConfigTest {
         assertEquals(0.95, config.topP, 0.0)
         assertEquals(0.2, config.temperature, 0.0)
         assertEquals(GemmaBackendMode.GpuTextGpuVision, config.backendMode)
+        assertTrue(config.retryCpuOnGpuFailure)
         assertFalse(config.prompt.isBlank())
+    }
+
+    @Test
+    fun backendModeLabelsAreUsefulForDeviceDebugging() {
+        assertEquals("GPU text + GPU vision", GemmaBackendMode.GpuTextGpuVision.label)
+        assertEquals("CPU text + CPU vision", GemmaBackendMode.CpuTextCpuVision.label)
     }
 
     @Test
