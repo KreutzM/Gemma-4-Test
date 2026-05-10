@@ -7,13 +7,15 @@ import org.junit.Test
 
 class GemmaInferenceConfigTest {
     @Test
-    fun defaultConfigUsesConservativeMvpValues() {
+    fun defaultConfigUsesGalleryAlignedVisionValues() {
         val config = GemmaInferenceConfig()
 
         assertEquals(1024, config.maxTokens)
+        assertEquals(1, config.maxImages)
         assertEquals(40, config.topK)
         assertEquals(0.95, config.topP, 0.0)
         assertEquals(0.2, config.temperature, 0.0)
+        assertEquals(GemmaBackendMode.GpuTextGpuVision, config.backendMode)
         assertFalse(config.prompt.isBlank())
     }
 
@@ -28,6 +30,9 @@ class GemmaInferenceConfigTest {
     fun rejectsInvalidSamplerValues() {
         assertThrows(IllegalArgumentException::class.java) {
             GemmaInferenceConfig(maxTokens = 0)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            GemmaInferenceConfig(maxImages = 0)
         }
         assertThrows(IllegalArgumentException::class.java) {
             GemmaInferenceConfig(topK = 0)
