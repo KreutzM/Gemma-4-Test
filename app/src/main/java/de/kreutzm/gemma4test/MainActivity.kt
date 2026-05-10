@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import de.kreutzm.gemma4test.image.ImagePreprocessor
+import de.kreutzm.gemma4test.inference.GemmaBackendMode
 import de.kreutzm.gemma4test.inference.GemmaInferenceState
 import de.kreutzm.gemma4test.inference.GemmaVisionEngine
 import de.kreutzm.gemma4test.model.GemmaModelConfig
@@ -74,6 +75,7 @@ private fun GemmaMvpScreen() {
     var capturedBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var processedPngBytes by remember { mutableStateOf<ByteArray?>(null) }
     var descriptionText by remember { mutableStateOf("") }
+    var activeBackendMode by remember { mutableStateOf<GemmaBackendMode?>(null) }
 
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicturePreview(),
@@ -87,6 +89,7 @@ private fun GemmaMvpScreen() {
         capturedBitmap = scaledBitmap
         processedPngBytes = pngBytes
         descriptionText = ""
+        activeBackendMode = null
         inferenceState = GemmaInferenceState.Idle
         status = "Foto vorbereitet: ${scaledBitmap.width} x ${scaledBitmap.height} px, ${pngBytes.size} PNG-Bytes."
     }
@@ -157,6 +160,9 @@ private fun GemmaMvpScreen() {
                         Text("Beschreibung", fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.height(8.dp))
                         Text(inferenceState.toUiText())
+                        activeBackendMode?.let { mode ->
+                            Text("Backend: ${mode.label}")
+                        }
                         if (descriptionText.isNotBlank()) {
                             Spacer(Modifier.height(8.dp))
                             Text(descriptionText)
@@ -203,6 +209,7 @@ private fun GemmaMvpScreen() {
                         }
 
                         inferenceState = GemmaInferenceState.Initializing
+                        activeBackendMode = null
                         descriptionText = ""
                         status = inferenceState.toUiText()
 
@@ -218,8 +225,9 @@ private fun GemmaMvpScreen() {
                                 return@use
                             }
 
+                            activeBackendMode = engine.activeBackendMode
                             inferenceState = GemmaInferenceState.Running
-                            status = inferenceState.toUiText()
+                            status = "${inferenceState.toUiText()} (${engine.activeBackendMode?.label ?: "Backend unbekannt"})"
                             val result = engine.describeImage(imageBytes) { partialText ->
                                 coroutineScope.launch(Dispatchers.Main) {
                                     descriptionText = partialText
