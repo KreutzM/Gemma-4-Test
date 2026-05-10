@@ -4,7 +4,9 @@ object GemmaModelConfig {
     const val displayName = "Gemma-4-E2B-it"
     const val huggingFaceRepo = "litert-community/gemma-4-E2B-it-litert-lm"
     const val fileName = "gemma-4-E2B-it.litertlm"
-    const val sizeBytes = 2_588_147_712L
+    // Hugging Face resolve/Xet headers for the pinned commit report X-Linked-Size/Content-Length
+    // 2,583,085,056 bytes as of 2026-05-10.
+    const val sizeBytes = 2_583_085_056L
     const val minDeviceMemoryGb = 8
 
     // Google AI Edge Gallery model_allowlists/1_0_13.json lists this updated model file commit

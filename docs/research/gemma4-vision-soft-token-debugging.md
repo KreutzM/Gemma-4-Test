@@ -118,6 +118,8 @@ Gallery allowlist `1_0_13.json` lists `Gemma-4-E2B-it` with:
 
 It also lists both an initial `commitHash` and an `updatableModelFiles` commit hash for the same model file. Device debugging should avoid unpinned model downloads.
 
+The pinned updated model file commit `7fa1d78473894f7e736a21d920c3aa80f950c0db` reported `X-Linked-Size` / `Content-Length` `2583085056` from Hugging Face/Xet on 2026-05-10, so the app's download validation uses that resolved file size rather than the initial allowlist size.
+
 Reference:
 
 - https://github.com/google-ai-edge/gallery/blob/main/model_allowlists/1_0_13.json
