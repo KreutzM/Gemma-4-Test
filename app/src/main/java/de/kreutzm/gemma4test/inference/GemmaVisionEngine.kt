@@ -26,33 +26,36 @@ class GemmaVisionEngine(
 ) : AutoCloseable {
     private var engine: Engine? = null
     private var conversation: Conversation? = null
+    var activeBackendMode: GemmaBackendMode? = null
+        private set
 
     suspend fun initialize(): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             if (engine != null && conversation != null) return@runCatching
 
-            val (textBackend, visionBackend) = config.backendMode.toLiteRtBackends()
-            val engineConfig = EngineConfig(
-                modelPath = modelPath,
-                backend = textBackend,
-                visionBackend = visionBackend,
-                maxNumTokens = config.maxTokens,
-                maxNumImages = config.maxImages,
-                cacheDir = context.cacheDir.absolutePath,
-            )
-            val initializedEngine = Engine(engineConfig)
-            initializedEngine.initialize()
-            val initializedConversation = initializedEngine.createConversation(
-                ConversationConfig(
-                    samplerConfig = SamplerConfig(
-                        topK = config.topK,
-                        topP = config.topP,
-                        temperature = config.temperature,
-                    ),
-                ),
-            )
-            engine = initializedEngine
-            conversation = initializedConversation
+            val modesToTry = buildList {
+                add(config.backendMode)
+                if (
+                    config.retryCpuOnGpuFailure &&
+                    config.backendMode == GemmaBackendMode.GpuTextGpuVision
+                ) {
+                    add(GemmaBackendMode.CpuTextCpuVision)
+                }
+            }.distinct()
+
+            var lastFailure: Throwable? = null
+            for (mode in modesToTry) {
+                try {
+                    initializeWithBackendMode(mode)
+                    activeBackendMode = mode
+                    return@runCatching
+                } catch (throwable: Throwable) {
+                    lastFailure = throwable
+                    close()
+                }
+            }
+
+            throw checkNotNull(lastFailure) { "No LiteRT-LM backend mode was attempted" }
         }
     }
 
@@ -109,9 +112,38 @@ class GemmaVisionEngine(
             conversation?.close()
         } finally {
             conversation = null
-            engine?.close()
-            engine = null
+            try {
+                engine?.close()
+            } finally {
+                engine = null
+                activeBackendMode = null
+            }
         }
+    }
+
+    private fun initializeWithBackendMode(mode: GemmaBackendMode) {
+        val (textBackend, visionBackend) = mode.toLiteRtBackends()
+        val engineConfig = EngineConfig(
+            modelPath = modelPath,
+            backend = textBackend,
+            visionBackend = visionBackend,
+            maxNumTokens = config.maxTokens,
+            maxNumImages = config.maxImages,
+            cacheDir = context.cacheDir.absolutePath,
+        )
+        val initializedEngine = Engine(engineConfig)
+        initializedEngine.initialize()
+        val initializedConversation = initializedEngine.createConversation(
+            ConversationConfig(
+                samplerConfig = SamplerConfig(
+                    topK = config.topK,
+                    topP = config.topP,
+                    temperature = config.temperature,
+                ),
+            ),
+        )
+        engine = initializedEngine
+        conversation = initializedConversation
     }
 
     private fun GemmaBackendMode.toLiteRtBackends(): Pair<Backend, Backend> = when (this) {

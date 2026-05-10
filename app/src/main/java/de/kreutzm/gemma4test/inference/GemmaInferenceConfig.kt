@@ -10,6 +10,7 @@ data class GemmaInferenceConfig(
     val topP: Double = DEFAULT_TOP_P,
     val temperature: Double = DEFAULT_TEMPERATURE,
     val backendMode: GemmaBackendMode = GemmaBackendMode.GpuTextGpuVision,
+    val retryCpuOnGpuFailure: Boolean = true,
 ) {
     init {
         require(prompt.isNotBlank()) { "prompt must not be blank" }
@@ -29,7 +30,9 @@ data class GemmaInferenceConfig(
     }
 }
 
-enum class GemmaBackendMode {
-    GpuTextGpuVision,
-    CpuTextCpuVision,
+enum class GemmaBackendMode(
+    val label: String,
+) {
+    GpuTextGpuVision("GPU text + GPU vision"),
+    CpuTextCpuVision("CPU text + CPU vision"),
 }
