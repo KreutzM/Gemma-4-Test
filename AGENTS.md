@@ -48,7 +48,12 @@ Gemma 4 E2B vision is known to be difficult to run reliably outside Google AI Ed
 - Gallery's default vision accelerator is GPU; CPU is available in Gallery's backend mapping, but it must be treated as a diagnostic mode, not as a guaranteed vision fallback.
 - On Samsung S23+, observed logs showed GPU registration, OpenCL unavailable, OpenGL fallback, `CreateSharedMemoryManager is not implemented`, `DYNAMIC_UPDATE_SLICE failed to prepare`, and `max_num_images: 0`.
 - After `max_num_images` was fixed to `1`, S23+ CPU/XNNPack logs showed internal resize from `141x250` to `576x1056`, `2376 patches` near `max_num_patches: 2520`, followed by `DYNAMIC_UPDATE_SLICE failed to prepare` and tensor allocation failure.
-- Fixes should first remove configuration mismatches versus Gallery, especially image capacity, backend setup, and image geometry, before changing the model or runtime.
+- After 512x512 letterboxing, S23+ CPU/XNNPack logs still showed internal resize to `768x768`, `2304 patches`, and the same `DYNAMIC_UPDATE_SLICE`/tensor allocation failure. Do not assume smaller PNG dimensions alone will fix this.
+- Gemma 4 vision uses a soft-token / patch-budget image processor. Before lowering or raising image size again, investigate whether LiteRT-LM exposes `max_soft_tokens`, `maxNumPatches`, image sequence length, or equivalent configuration.
+- Public LiteRT-LM Kotlin `EngineConfig` currently exposes `maxNumTokens` and `maxNumImages`, but not an obvious `maxSoftTokens` setting. Treat this as an open API gap until proven otherwise.
+- Gallery allowlist 1.0.13 lists Gemma-4-E2B-it with `topK=64`, `topP=0.95`, `temperature=1.0`, `maxTokens=4000`, `maxContextLength=32000`, `accelerators=gpu,cpu`, and `visionAccelerator=gpu`. Preserve or explicitly document deviations from these defaults.
+- Gallery allowlist 1.0.13 includes a specific initial `commitHash` and an updated model file commit hash for `gemma-4-E2B-it.litertlm`. Avoid relying on unpinned `resolve/main` downloads for reproducible device debugging.
+- Fixes should first remove configuration mismatches versus Gallery, especially model revision, image capacity, backend setup, sampler/config defaults, and vision-token budget, before changing the model or runtime.
 - Do not switch back to MediaPipe LLM Inference or `.task` files for this target model.
 - Do not add multi-image support until single-image inference succeeds on device.
 - Do not hide inference failures. Surface the exact error in UI and preserve logcat-relevant context in docs.
