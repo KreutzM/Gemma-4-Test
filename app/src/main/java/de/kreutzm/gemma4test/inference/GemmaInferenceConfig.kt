@@ -22,11 +22,12 @@ data class GemmaInferenceConfig(
     }
 
     companion object {
-        const val DEFAULT_MAX_TOKENS = 1024
+        // Aligned with Google AI Edge Gallery model_allowlists/1_0_13.json for Gemma-4-E2B-it.
+        const val DEFAULT_MAX_TOKENS = 4000
         const val DEFAULT_MAX_IMAGES = 1
-        const val DEFAULT_TOP_K = 40
+        const val DEFAULT_TOP_K = 64
         const val DEFAULT_TOP_P = 0.95
-        const val DEFAULT_TEMPERATURE = 0.2
+        const val DEFAULT_TEMPERATURE = 1.0
     }
 }
 
