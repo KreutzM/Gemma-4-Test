@@ -34,6 +34,9 @@ Useful variants:
 # Use a specific device when multiple ADB devices are connected
 .\scripts\run-local-device.ps1 -DeviceSerial <serial>
 
+# Use a custom Gradle user home/cache
+.\scripts\run-local-device.ps1 -GradleUserHome D:\GradleHome-Codex
+
 # Skip local unit tests or lint for quick manual smoke tests
 .\scripts\run-local-device.ps1 -SkipTests -SkipLint
 ```
@@ -44,4 +47,4 @@ Prerequisites:
 - Android SDK / Platform Tools installed.
 - `adb` available in `PATH` for install/start.
 - USB debugging enabled on the Android device.
-- If the Gradle Wrapper is missing, `gradle` must be available in `PATH` so the script can generate it.
+- If the Gradle Wrapper is missing, `gradle` must be available in `PATH`, or the configured `-GradleUserHome` must contain an unpacked Gradle distribution under `wrapper\dists`.

@@ -5,7 +5,8 @@ param(
     [switch]$NoInstall,
     [switch]$NoStart,
     [switch]$NoBuild,
-    [string]$DeviceSerial
+    [string]$DeviceSerial,
+    [string]$GradleUserHome = "D:\GradleHome-Codex"
 )
 
 $ErrorActionPreference = "Stop"
@@ -47,21 +48,69 @@ function Test-CommandAvailable {
     return [bool](Get-Command $CommandName -ErrorAction SilentlyContinue)
 }
 
+function Find-CachedGradle {
+    if (-not $env:GRADLE_USER_HOME) {
+        return $null
+    }
+
+    $wrapperDists = Join-Path $env:GRADLE_USER_HOME "wrapper\dists"
+    if (-not (Test-Path $wrapperDists)) {
+        return $null
+    }
+
+    return Get-ChildItem -Path $wrapperDists -Recurse -Filter "gradle.bat" -ErrorAction SilentlyContinue |
+        Sort-Object FullName -Descending |
+        Select-Object -First 1 -ExpandProperty FullName
+}
+
+function Initialize-GradleEnvironment {
+    if ((Test-Path $GradleUserHome) -and ($env:GRADLE_USER_HOME -ne $GradleUserHome)) {
+        $env:GRADLE_USER_HOME = $GradleUserHome
+        Write-Host "GRADLE_USER_HOME=$GradleUserHome" -ForegroundColor DarkGray
+    }
+
+    $cachedGradle = Find-CachedGradle
+    if ($cachedGradle) {
+        $gradleHome = Split-Path (Split-Path $cachedGradle -Parent) -Parent
+        if ($env:GRADLE_HOME -ne $gradleHome) {
+            $env:GRADLE_HOME = $gradleHome
+            Write-Host "GRADLE_HOME=$gradleHome" -ForegroundColor DarkGray
+        }
+    }
+}
+
+function Get-BootstrapGradle {
+    $pathGradle = Get-Command "gradle" -ErrorAction SilentlyContinue
+    if ($pathGradle) {
+        return $pathGradle.Source
+    }
+
+    if ($env:GRADLE_HOME) {
+        $gradleHomeCommand = Join-Path $env:GRADLE_HOME "bin\gradle.bat"
+        if (Test-Path $gradleHomeCommand) {
+            return $gradleHomeCommand
+        }
+    }
+
+    return Find-CachedGradle
+}
+
 function Ensure-GradleWrapper {
     if ((Test-Path ".\gradlew.bat") -and (Test-Path ".\gradle\wrapper\gradle-wrapper.jar")) {
         return
     }
 
-    if (-not (Test-CommandAvailable "gradle")) {
-        throw "gradlew.bat oder gradle-wrapper.jar fehlt, und 'gradle' ist nicht im PATH. Installiere Gradle oder erzeuge den Wrapper lokal."
+    $bootstrapGradle = Get-BootstrapGradle
+    if (-not $bootstrapGradle) {
+        throw "gradlew.bat oder gradle-wrapper.jar fehlt, und 'gradle' ist nicht im PATH. Installiere Gradle oder stelle einen Gradle-Cache unter $GradleUserHome bereit."
     }
 
     Invoke-Step "Generate Gradle Wrapper $GradleVersion" {
-        & gradle wrapper --gradle-version $GradleVersion --distribution-type bin
+        & $bootstrapGradle wrapper --gradle-version $GradleVersion --distribution-type bin
     }
 
-    if (-not (Test-Path ".\gradlew.bat")) {
-        throw "Gradle Wrapper konnte nicht erzeugt werden: .\gradlew.bat fehlt."
+    if ((-not (Test-Path ".\gradlew.bat")) -or (-not (Test-Path ".\gradle\wrapper\gradle-wrapper.jar"))) {
+        throw "Gradle Wrapper konnte nicht vollstaendig erzeugt werden: .\gradlew.bat oder .\gradle\wrapper\gradle-wrapper.jar fehlt."
     }
 }
 
@@ -74,6 +123,7 @@ if (-not (Test-Path ".\settings.gradle.kts")) {
     throw "settings.gradle.kts wurde nicht gefunden. Bitte Skript aus dem Repository-Root ausfuehren."
 }
 
+Initialize-GradleEnvironment
 Ensure-GradleWrapper
 
 if (-not $NoBuild) {
