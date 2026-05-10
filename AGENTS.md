@@ -37,6 +37,7 @@ Build a minimal Android app that downloads Gemma 4 E2B and then performs local/o
 - Close `Conversation` and `Engine` deterministically.
 - Keep the MVP single-image until S23+ inference is verified.
 - Keep image preprocessing bounded; do not send full-resolution camera images into LiteRT-LM.
+- For the current MVP, send a conservative `512 x 512` square letterboxed image to LiteRT-LM. Do not raise this size without a successful S23+ logcat smoke test.
 
 ## Gemma 4 / LiteRT-LM guardrails
 
@@ -46,7 +47,8 @@ Gemma 4 E2B vision is known to be difficult to run reliably outside Google AI Ed
 - Kotlin version was raised to `2.2.0` because LiteRT-LM 0.11.0 uses newer Kotlin metadata.
 - Gallery's default vision accelerator is GPU; CPU is available in Gallery's backend mapping, but it must be treated as a diagnostic mode, not as a guaranteed vision fallback.
 - On Samsung S23+, observed logs showed GPU registration, OpenCL unavailable, OpenGL fallback, `CreateSharedMemoryManager is not implemented`, `DYNAMIC_UPDATE_SLICE failed to prepare`, and `max_num_images: 0`.
-- Fixes should first remove configuration mismatches versus Gallery, especially image capacity and backend setup, before changing the model or runtime.
+- After `max_num_images` was fixed to `1`, S23+ CPU/XNNPack logs showed internal resize from `141x250` to `576x1056`, `2376 patches` near `max_num_patches: 2520`, followed by `DYNAMIC_UPDATE_SLICE failed to prepare` and tensor allocation failure.
+- Fixes should first remove configuration mismatches versus Gallery, especially image capacity, backend setup, and image geometry, before changing the model or runtime.
 - Do not switch back to MediaPipe LLM Inference or `.task` files for this target model.
 - Do not add multi-image support until single-image inference succeeds on device.
 - Do not hide inference failures. Surface the exact error in UI and preserve logcat-relevant context in docs.
