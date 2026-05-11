@@ -51,8 +51,9 @@ The pinned updated model file commit `7fa1d78473894f7e736a21d920c3aa80f950c0db` 
   - `temperature = 1.0`
   - `maxTokens = 4000`
 - Keep existing Android app-specific diagnostic behavior:
-  - GPU text + GPU vision first,
-  - CPU text + CPU vision retry after GPU initialization failure,
+  - default backend policy `GPU then CPU fallback`,
+  - debug UI controls for `GPU only`, `CPU only`, and `GPU then CPU fallback`,
+  - stable `GemmaVisionEngine` logcat entries for attempted, failed, and initialized backends,
   - `maxImages = 1`.
 
 ## Known non-parity
@@ -60,6 +61,8 @@ The pinned updated model file commit `7fa1d78473894f7e736a21d920c3aa80f950c0db` 
 The app currently does not expose Gallery's full task/config model and does not pass `maxContextLength = 32000` because the inspected public LiteRT-LM Kotlin `EngineConfig` exposes `maxNumTokens`, not a separate `maxContextLength` parameter.
 
 The app still uses a single hard-coded German prompt and one-image MVP flow.
+
+The app does not enable Gallery's speculative decoding path yet. Gallery checks `Capabilities(modelPath).hasSpeculativeDecodingSupport()` and can set `ExperimentalFlags.enableSpeculativeDecoding`; a later PR should add this only behind an explicit toggle after compile-safe API verification.
 
 ## Device-test expectations
 
@@ -70,6 +73,10 @@ After installing this PR:
 3. Capture one image.
 4. Run image description.
 5. Check logcat for:
+   - `GemmaVisionEngine`,
+   - `Trying LiteRT backend`,
+   - `LiteRT backend failed`,
+   - `LiteRT backend initialized`,
    - `max_num_images: 1`,
    - backend mode,
    - internal resize / patch count,

@@ -9,8 +9,7 @@ data class GemmaInferenceConfig(
     val topK: Int = DEFAULT_TOP_K,
     val topP: Double = DEFAULT_TOP_P,
     val temperature: Double = DEFAULT_TEMPERATURE,
-    val backendMode: GemmaBackendMode = GemmaBackendMode.GpuTextGpuVision,
-    val retryCpuOnGpuFailure: Boolean = true,
+    val backendPolicy: GemmaBackendPolicy = GemmaBackendPolicy.GpuThenCpuFallback,
 ) {
     init {
         require(prompt.isNotBlank()) { "prompt must not be blank" }
@@ -36,4 +35,21 @@ enum class GemmaBackendMode(
 ) {
     GpuTextGpuVision("GPU text + GPU vision"),
     CpuTextCpuVision("CPU text + CPU vision"),
+}
+
+enum class GemmaBackendPolicy(
+    val label: String,
+) {
+    GpuOnly("GPU only"),
+    CpuOnly("CPU only"),
+    GpuThenCpuFallback("GPU then CPU fallback"),
+}
+
+fun GemmaBackendPolicy.backendAttemptOrder(): List<GemmaBackendMode> = when (this) {
+    GemmaBackendPolicy.GpuOnly -> listOf(GemmaBackendMode.GpuTextGpuVision)
+    GemmaBackendPolicy.CpuOnly -> listOf(GemmaBackendMode.CpuTextCpuVision)
+    GemmaBackendPolicy.GpuThenCpuFallback -> listOf(
+        GemmaBackendMode.GpuTextGpuVision,
+        GemmaBackendMode.CpuTextCpuVision,
+    )
 }

@@ -22,6 +22,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -37,8 +38,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import de.kreutzm.gemma4test.inference.GemmaBackendPolicy
 import de.kreutzm.gemma4test.image.ImagePreprocessor
 import de.kreutzm.gemma4test.inference.GemmaBackendMode
+import de.kreutzm.gemma4test.inference.GemmaInferenceConfig
 import de.kreutzm.gemma4test.inference.GemmaInferenceState
 import de.kreutzm.gemma4test.inference.GemmaVisionEngine
 import de.kreutzm.gemma4test.model.GemmaModelConfig
@@ -78,6 +81,7 @@ private fun GemmaMvpScreen() {
     var processedPngBytes by remember { mutableStateOf<ByteArray?>(null) }
     var descriptionText by remember { mutableStateOf("") }
     var activeBackendMode by remember { mutableStateOf<GemmaBackendMode?>(null) }
+    var backendPolicy by remember { mutableStateOf(GemmaBackendPolicy.GpuThenCpuFallback) }
 
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicturePreview(),
@@ -166,6 +170,7 @@ private fun GemmaMvpScreen() {
                         activeBackendMode?.let { mode ->
                             Text("Backend: ${mode.label}")
                         }
+                        Text("Policy: ${backendPolicy.label}")
                         if (descriptionText.isNotBlank()) {
                             Spacer(Modifier.height(8.dp))
                             Text(descriptionText)
@@ -199,6 +204,16 @@ private fun GemmaMvpScreen() {
             ) {
                 Text("Foto aufnehmen")
             }
+            BackendPolicySelector(
+                selectedPolicy = backendPolicy,
+                enabled = inferenceState !is GemmaInferenceState.Running &&
+                    inferenceState !is GemmaInferenceState.Initializing,
+                onSelected = { selectedPolicy ->
+                    backendPolicy = selectedPolicy
+                    activeBackendMode = null
+                    status = "Backend-Policy: ${selectedPolicy.label}"
+                },
+            )
             Button(
                 enabled = processedPngBytes != null && inferenceState !is GemmaInferenceState.Running && inferenceState !is GemmaInferenceState.Initializing,
                 onClick = {
@@ -219,6 +234,7 @@ private fun GemmaMvpScreen() {
                         GemmaVisionEngine(
                             context = context.applicationContext,
                             modelPath = modelFile.absolutePath,
+                            config = GemmaInferenceConfig(backendPolicy = backendPolicy),
                         ).use { engine ->
                             val initResult = engine.initialize()
                             if (initResult.isFailure) {
@@ -257,6 +273,43 @@ private fun GemmaMvpScreen() {
             }
 
             Text(text = status, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+@Composable
+private fun BackendPolicySelector(
+    selectedPolicy: GemmaBackendPolicy,
+    enabled: Boolean,
+    onSelected: (GemmaBackendPolicy) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Backend policy: ${selectedPolicy.label}", fontWeight = FontWeight.SemiBold)
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            GemmaBackendPolicy.entries.forEach { policy ->
+                val buttonText = when (policy) {
+                    GemmaBackendPolicy.GpuOnly -> "GPU only"
+                    GemmaBackendPolicy.CpuOnly -> "CPU only"
+                    GemmaBackendPolicy.GpuThenCpuFallback -> "GPU then CPU fallback"
+                }
+                if (policy == selectedPolicy) {
+                    Button(
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = enabled,
+                        onClick = { onSelected(policy) },
+                    ) {
+                        Text(buttonText)
+                    }
+                } else {
+                    OutlinedButton(
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = enabled,
+                        onClick = { onSelected(policy) },
+                    ) {
+                        Text(buttonText)
+                    }
+                }
+            }
         }
     }
 }

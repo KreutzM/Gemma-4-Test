@@ -52,6 +52,8 @@ Gemma 4 E2B vision is known to be difficult to run reliably outside Google AI Ed
 - Gemma 4 vision uses a soft-token / patch-budget image processor. Before lowering or raising image size again, investigate whether LiteRT-LM exposes `max_soft_tokens`, `maxNumPatches`, image sequence length, or equivalent configuration.
 - Public LiteRT-LM Kotlin `EngineConfig` currently exposes `maxNumTokens` and `maxNumImages`, but not an obvious `maxSoftTokens` setting. Treat this as an open API gap until proven otherwise.
 - Gallery allowlist 1.0.13 lists Gemma-4-E2B-it with `topK=64`, `topP=0.95`, `temperature=1.0`, `maxTokens=4000`, `maxContextLength=32000`, `accelerators=gpu,cpu`, and `visionAccelerator=gpu`. Preserve or explicitly document deviations from these defaults.
+- Preserve explicit backend diagnostics until S23+ GPU behavior is understood: `GemmaBackendPolicy`, the debug UI selector, `GemmaVisionEngine` logcat strings for backend attempts/failures/successes, and full throwable logging on initialization failure.
+- Do not claim Gallery GPU parity from allowlist metadata alone. Compare this app and Google AI Edge Gallery on-device with logcat before changing backend strategy.
 - Gallery allowlist 1.0.13 includes a specific initial `commitHash` and an updated model file commit hash for `gemma-4-E2B-it.litertlm`. Avoid relying on unpinned `resolve/main` downloads for reproducible device debugging.
 - Fixes should first remove configuration mismatches versus Gallery, especially model revision, image capacity, backend setup, sampler/config defaults, and vision-token budget, before changing the model or runtime.
 - Do not switch back to MediaPipe LLM Inference or `.task` files for this target model.
