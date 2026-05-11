@@ -99,6 +99,14 @@ Failures are logged with the full throwable so logcat contains the exception mes
 
 The key question is whether Gallery actually initializes GPU on this S23+, or whether it also uses CPU/fallback.
 
+## 2026-05-11 Gallery comparison result
+
+Gallery did initialize GPU/OpenCL successfully on the same S23+ for `Gemma-4-E2B-it` Ask Image. It logged `MainExecutorSettings: backend: GPU`, `EncoderBackend: GPU`, `AdapterBackend: CPU`, `Loaded OpenCL library with dlopen`, and `Replacing ... node(s) with delegate (LITERT_CL)`.
+
+This app still failed GPU initialization with `OpenCL not supported on this platform. Using OpenGL instead` followed by `CreateSharedMemoryManager is not implemented`.
+
+See `docs/device-debugging/gallery-backend-comparison-2026-05-11.md` for the full ADB/logcat comparison. The next investigation should focus on why Gallery obtains the OpenCL path while this app falls into OpenGL, and whether Gallery's dated local model file differs from this app's pinned Hugging Face file.
+
 ## Speculative decoding note
 
 Gallery checks model capabilities with `Capabilities(modelPath).hasSpeculativeDecodingSupport()` and can set `ExperimentalFlags.enableSpeculativeDecoding` when supported. This app does not enable speculative decoding by default yet. A later PR should add an explicit toggle only after the LiteRT-LM Kotlin API usage is compile-safe in this project.
