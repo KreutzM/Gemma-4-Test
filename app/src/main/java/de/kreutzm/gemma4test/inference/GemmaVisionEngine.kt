@@ -37,6 +37,7 @@ class GemmaVisionEngine(
             if (engine != null && conversation != null) return@runCatching
 
             val modesToTry = config.backendPolicy.backendAttemptOrder()
+            logRuntimeDiagnostics(modesToTry)
 
             var lastFailure: Throwable? = null
             for (mode in modesToTry) {
@@ -45,6 +46,7 @@ class GemmaVisionEngine(
                     initializeWithBackendMode(mode)
                     activeBackendMode = mode
                     Log.i(TAG, "LiteRT backend initialized: ${mode.label}")
+                    Log.i(TAG, "activeBackendMode=${mode.label}")
                     return@runCatching
                 } catch (throwable: Throwable) {
                     lastFailure = throwable
@@ -142,6 +144,16 @@ class GemmaVisionEngine(
         )
         engine = initializedEngine
         conversation = initializedConversation
+    }
+
+    private fun logRuntimeDiagnostics(modesToTry: List<GemmaBackendMode>) {
+        Log.i(TAG, "modelPath=$modelPath")
+        Log.i(TAG, "cacheDir=${context.cacheDir.absolutePath}")
+        Log.i(TAG, "context.filesDir=${context.filesDir.absolutePath}")
+        Log.i(TAG, "context.externalFilesDir=${context.getExternalFilesDir(null)?.absolutePath ?: "unavailable"}")
+        Log.i(TAG, "nativeLibraryDir=${context.applicationInfo.nativeLibraryDir}")
+        Log.i(TAG, "backendPolicy=${config.backendPolicy.label}")
+        Log.i(TAG, "backend attempt order=${modesToTry.joinToString { it.label }}")
     }
 
     private fun GemmaBackendMode.toLiteRtBackends(): Pair<Backend, Backend> = when (this) {
