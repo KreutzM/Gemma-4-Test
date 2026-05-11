@@ -16,6 +16,7 @@ captures/
 *.apk
 *.aab
 *.ap_
+logs/
 
 # Signing / secrets
 *.jks
