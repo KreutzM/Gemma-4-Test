@@ -3,6 +3,7 @@ package de.kreutzm.gemma4test
 import android.Manifest
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -44,7 +45,6 @@ import de.kreutzm.gemma4test.inference.GemmaBackendMode
 import de.kreutzm.gemma4test.inference.GemmaInferenceConfig
 import de.kreutzm.gemma4test.inference.GemmaInferenceState
 import de.kreutzm.gemma4test.inference.GemmaVisionEngine
-import de.kreutzm.gemma4test.model.GemmaModelConfig
 import de.kreutzm.gemma4test.model.ModelDownloadRequest
 import de.kreutzm.gemma4test.model.ModelDownloadState
 import de.kreutzm.gemma4test.model.ModelDownloader
@@ -53,6 +53,8 @@ import de.kreutzm.gemma4test.ui.theme.Gemma4TestTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+private const val MODEL_METADATA_TAG = "GemmaModelMetadata"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,6 +75,7 @@ private fun GemmaMvpScreen() {
     val coroutineScope = rememberCoroutineScope()
     val modelRequest = remember { ModelDownloadRequest.gemma4E2B() }
     val modelFileStore = remember { ModelFileStore.fromContext(context) }
+    val modelFile = remember(modelRequest) { modelFileStore.modelFile(modelRequest) }
     var downloadState by remember { mutableStateOf<ModelDownloadState>(ModelDownloadState.Idle) }
     var inferenceState by remember { mutableStateOf<GemmaInferenceState>(GemmaInferenceState.Idle) }
     var status by remember { mutableStateOf("Bereit: Modell laden, Foto aufnehmen und lokal mit LiteRT-LM beschreiben.") }
@@ -137,8 +140,11 @@ private fun GemmaMvpScreen() {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Modelldatei", fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(8.dp))
-                    Text(GemmaModelConfig.fileName)
-                    Text("${GemmaModelConfig.sizeBytes} Bytes")
+                    Text("Variante: ${modelRequest.variantId}")
+                    Text("Datei: ${modelRequest.fileName}")
+                    Text("Erwartet: ${modelRequest.expectedSizeBytes} Bytes")
+                    Text("Installiert: ${if (modelFile.isFile) "${modelFile.length()} Bytes" else "nicht vorhanden"}")
+                    Text("SHA-256 erwartet: ${modelRequest.expectedSha256 ?: "nicht gepinnt"}")
                     Text("Status: ${downloadState.toUiText()}")
                 }
             }
@@ -219,7 +225,6 @@ private fun GemmaMvpScreen() {
                 onClick = {
                     val imageBytes = processedPngBytes ?: return@Button
                     coroutineScope.launch {
-                        val modelFile = modelFileStore.modelFile(modelRequest)
                         if (!modelFileStore.hasCompleteModel(modelRequest)) {
                             inferenceState = GemmaInferenceState.Failed("Modell ist noch nicht vollständig geladen.")
                             status = inferenceState.toUiText()
@@ -230,6 +235,7 @@ private fun GemmaMvpScreen() {
                         activeBackendMode = null
                         descriptionText = ""
                         status = inferenceState.toUiText()
+                        logModelMetadata(modelRequest, modelFile)
 
                         GemmaVisionEngine(
                             context = context.applicationContext,
@@ -312,6 +318,16 @@ private fun BackendPolicySelector(
             }
         }
     }
+}
+
+private fun logModelMetadata(request: ModelDownloadRequest, modelFile: java.io.File) {
+    Log.i(MODEL_METADATA_TAG, "modelVariant=${request.variantId}")
+    Log.i(MODEL_METADATA_TAG, "modelFileName=${request.fileName}")
+    Log.i(MODEL_METADATA_TAG, "expectedSizeBytes=${request.expectedSizeBytes}")
+    Log.i(MODEL_METADATA_TAG, "actualSizeBytes=${if (modelFile.isFile) modelFile.length() else "missing"}")
+    Log.i(MODEL_METADATA_TAG, "expectedSha256=${request.expectedSha256 ?: "not pinned"}")
+    Log.i(MODEL_METADATA_TAG, "actualSha256=not computed")
+    Log.i(MODEL_METADATA_TAG, "modelPath=${modelFile.absolutePath}")
 }
 
 private fun ModelDownloadState.toUiText(): String = when (this) {
