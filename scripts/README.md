@@ -43,9 +43,9 @@ Useful variants:
 
 ## `compare-litert-model-files.ps1`
 
-Compares the LiteRT-LM model files and recent GPU/OpenCL logs between Google AI Edge Gallery and this app on a connected Android device.
+Compares the Google AI Edge Gallery Gemma-4-E2B-it `.litertlm` file with this app's downloaded model and writes a Markdown report under `logs/`.
 
-Run from the repository root after both apps have downloaded/created their Gemma model files:
+Run after one Gallery Ask Image inference and one Gemma-4-Test GPU-only attempt:
 
 ```powershell
 .\scripts\compare-litert-model-files.ps1
@@ -60,18 +60,19 @@ Useful variants:
 # Write summaries to a custom directory
 .\scripts\compare-litert-model-files.ps1 -OutputDir .\logs\s23plus
 
-# Override the expected Gallery file hint if logcat shows a different file name
-.\scripts\compare-litert-model-files.ps1 -GalleryFileHint "gemma4_2b_v09_obfus_fix_all_modalities_thinking.litertlm"
+# Bound on-device hashing time for multi-GB files
+.\scripts\compare-litert-model-files.ps1 -HashTimeoutSeconds 60
 ```
 
-The script writes a timestamped Markdown summary with:
+The generated `logs/litert-model-comparison-*.md` report includes:
 
-- device information,
-- package metadata,
-- Gallery `.litertlm` files visible under external app files,
-- this app's model metadata through `run-as`,
-- file sizes and SHA-256 hashes when available,
-- recent LiteRT/OpenCL/GPU logcat lines.
+- model paths,
+- file names,
+- sizes,
+- SHA-256 values when readable,
+- storage location,
+- package versions,
+- recent LiteRT/OpenCL log lines.
 
 Prerequisites:
 
