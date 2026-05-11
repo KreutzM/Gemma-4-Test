@@ -15,6 +15,27 @@
         android:roundIcon="@drawable/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Gemma4Test">
+
+        <!--
+            LiteRT-LM GPU/OpenCL diagnostics on Samsung S23+ showed that Google AI Edge
+            Gallery can load OpenCL, while this app fell back to OpenGL with
+            "libvndksupport.so not found" / "CreateSharedMemoryManager is not implemented".
+            Android 12+ native-library visibility can require declaring optional vendor GPU
+            libraries so the linker namespace exposes them to the app process.
+        -->
+        <uses-native-library
+            android:name="libOpenCL.so"
+            android:required="false" />
+        <uses-native-library
+            android:name="libOpenCL-pixel.so"
+            android:required="false" />
+        <uses-native-library
+            android:name="libGLES_mali.so"
+            android:required="false" />
+        <uses-native-library
+            android:name="libPVROCL.so"
+            android:required="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
