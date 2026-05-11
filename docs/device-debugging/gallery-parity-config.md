@@ -37,6 +37,8 @@ Google AI Edge Gallery `model_allowlists/1_0_13.json` lists `Gemma-4-E2B-it` wit
 
 Gallery's LiteRT-LM helper passes `maxTokens` to `EngineConfig.maxNumTokens`, sets `visionBackend` when image support is enabled, and sends `Content.ImageBytes(...)` before `Content.Text(...)`.
 
+The pinned updated model file commit `7fa1d78473894f7e736a21d920c3aa80f950c0db` reported `X-Linked-Size` / `Content-Length` `2583085056` from Hugging Face/Xet on 2026-05-10. The app validates downloads against that resolved file size while keeping the Gallery allowlist size documented above for parity reference.
+
 ## Changes made for parity
 
 - Pin the model download URL to Gallery's updated model file commit hash:

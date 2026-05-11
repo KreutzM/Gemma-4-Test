@@ -9,7 +9,7 @@ class GemmaModelConfigTest {
     fun modelMetadataMatchesExpectedLiteRtLmBundle() {
         assertEquals("Gemma-4-E2B-it", GemmaModelConfig.displayName)
         assertEquals("gemma-4-E2B-it.litertlm", GemmaModelConfig.fileName)
-        assertEquals(2_588_147_712L, GemmaModelConfig.sizeBytes)
+        assertEquals(2_583_085_056L, GemmaModelConfig.sizeBytes)
         assertTrue(GemmaModelConfig.downloadUrl.endsWith("/gemma-4-E2B-it.litertlm"))
     }
 }

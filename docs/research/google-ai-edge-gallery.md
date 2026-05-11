@@ -9,7 +9,8 @@ The Gallery Gemma 4 E2B entry uses a LiteRT-LM bundle, not a legacy MediaPipe `.
 - Model name: `Gemma-4-E2B-it`
 - Hugging Face repository: `litert-community/gemma-4-E2B-it-litert-lm`
 - File: `gemma-4-E2B-it.litertlm`
-- Size: `2,588,147,712` bytes
+- Gallery allowlist size: `2,588,147,712` bytes
+- Pinned updated model file size from Hugging Face/Xet headers on 2026-05-10: `2,583,085,056` bytes
 - Runtime type: `LiteRT_LM`
 - Minimum device memory: `8 GB`
 - Recommended max tokens for MVP: start at `1024`, then test `2048`.

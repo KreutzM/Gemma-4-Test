@@ -25,7 +25,7 @@ Use `Gemma-4-E2B-it` from the Gallery allowlist:
 
 - Hugging Face repo: `litert-community/gemma-4-E2B-it-litert-lm`
 - File: `gemma-4-E2B-it.litertlm`
-- Size: `2,588,147,712` bytes
+- Pinned updated model file size: `2,583,085,056` bytes
 - Minimum device memory according to Gallery: `8 GB`
 - Runtime: LiteRT-LM Android (`com.google.ai.edge.litertlm:litertlm-android`)
 

@@ -28,7 +28,8 @@ Relevant Gallery patterns:
 - Name: `Gemma-4-E2B-it`
 - Repo: `litert-community/gemma-4-E2B-it-litert-lm`
 - File: `gemma-4-E2B-it.litertlm`
-- Size: `2,588,147,712` bytes
+- Gallery allowlist size: `2,588,147,712` bytes
+- Pinned updated model file size from Hugging Face/Xet headers on 2026-05-10: `2,583,085,056` bytes
 - Target device: Samsung S23+
 
 ## Known device failure from Samsung S23+
