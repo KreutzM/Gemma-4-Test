@@ -13,7 +13,7 @@ The Gallery Gemma 4 E2B entry uses a LiteRT-LM bundle, not a legacy MediaPipe `.
 - Pinned updated model file size from Hugging Face/Xet headers on 2026-05-10: `2,583,085,056` bytes
 - Runtime type: `LiteRT_LM`
 - Minimum device memory: `8 GB`
-- Recommended max tokens for MVP: start at `1024`, then test `2048`.
+- Gallery default sampler/runtime values: `topK=64`, `topP=0.95`, `temperature=1.0`, `maxTokens=4000`, `maxContextLength=32000`.
 
 For this MVP, avoid E4B on S23+ because it has a much higher memory requirement and multiple Gallery reports indicate slow or failed initialization on larger Gemma 4 variants.
 
@@ -29,7 +29,8 @@ Important behaviors to copy:
 4. Convert input `Bitmap` to PNG bytes and add it as `Content.ImageBytes(...)` before the prompt text.
 5. Use `conversation.sendMessageAsync(...)` and stream partial responses through `MessageCallback`.
 6. Always close `Conversation` and `Engine` when leaving the screen or switching models.
-7. Prefer conservative sampler settings for image description: low temperature, limited max output tokens, one image for the first MVP.
+7. Keep Gallery's sampler defaults visible for parity: `topK=64`, `topP=0.95`, `temperature=1.0`, `maxTokens=4000`.
+8. Gallery checks speculative decoding capability with `Capabilities(modelPath).hasSpeculativeDecodingSupport()` and can set `ExperimentalFlags.enableSpeculativeDecoding`. This app should not enable it blindly; add an explicit toggle only after compile-safe API verification.
 
 ## Image-analysis pitfalls
 
@@ -39,7 +40,8 @@ Important behaviors to copy:
 - Put image content before text content; Gallery comments mention this is used for accurate last-token handling.
 - Keep the first MVP single-image. Multi-image plus long prompts has user-reported truncation and continuation issues.
 - Avoid long structured JSON prompts initially. Use a concise German prompt and plain text output.
-- Add CPU fallback for text backend, but test whether vision on CPU works acceptably before exposing it.
+- Keep explicit GPU-only, CPU-only, and GPU-then-CPU-fallback diagnostic paths until the S23+ behavior is understood.
+- Do not infer actual GPU use from Gallery allowlist metadata. Capture Gallery logcat and compare `MainExecutorSettings`, `VisionExecutorSettings`, `backend: GPU`, `backend: CPU`, `OpenCL`, `OpenGL`, and `CreateSharedMemoryManager` against this app.
 - Initialize and infer off the main thread. Large model compilation can freeze the UI if incorrectly dispatched.
 - Treat download integrity as part of runtime reliability: verify byte count and resume/retry robustly.
 
@@ -59,8 +61,9 @@ For a Samsung S23+ target, start with:
 
 - one image,
 - GPU preferred for both LLM and vision if initialization succeeds,
-- CPU fallback for LLM initialization failures,
+- CPU fallback for initialization failures,
 - low memory image preprocessing,
-- max output tokens at 1024,
+- Gallery-aligned `maxTokens=4000` with memory risk called out in PRs,
 - visible initialization/download states,
+- explicit backend policy and logcat diagnostics,
 - robust cleanup and cancellation.

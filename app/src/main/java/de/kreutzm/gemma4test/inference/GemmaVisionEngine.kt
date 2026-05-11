@@ -1,6 +1,7 @@
 package de.kreutzm.gemma4test.inference
 
 import android.content.Context
+import android.util.Log
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Content
 import com.google.ai.edge.litertlm.Contents
@@ -18,6 +19,8 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 
+private const val TAG = "GemmaVisionEngine"
+
 @OptIn(ExperimentalApi::class)
 class GemmaVisionEngine(
     private val context: Context,
@@ -33,24 +36,19 @@ class GemmaVisionEngine(
         runCatching {
             if (engine != null && conversation != null) return@runCatching
 
-            val modesToTry = buildList {
-                add(config.backendMode)
-                if (
-                    config.retryCpuOnGpuFailure &&
-                    config.backendMode == GemmaBackendMode.GpuTextGpuVision
-                ) {
-                    add(GemmaBackendMode.CpuTextCpuVision)
-                }
-            }.distinct()
+            val modesToTry = config.backendPolicy.backendAttemptOrder()
 
             var lastFailure: Throwable? = null
             for (mode in modesToTry) {
                 try {
+                    Log.i(TAG, "Trying LiteRT backend: ${mode.label}")
                     initializeWithBackendMode(mode)
                     activeBackendMode = mode
+                    Log.i(TAG, "LiteRT backend initialized: ${mode.label}")
                     return@runCatching
                 } catch (throwable: Throwable) {
                     lastFailure = throwable
+                    Log.e(TAG, "LiteRT backend failed: ${mode.label}", throwable)
                     close()
                 }
             }
