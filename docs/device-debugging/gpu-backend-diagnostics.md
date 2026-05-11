@@ -107,6 +107,18 @@ This app still failed GPU initialization with `OpenCL not supported on this plat
 
 See `docs/device-debugging/gallery-backend-comparison-2026-05-11.md` for the full ADB/logcat comparison. The next investigation should focus on why Gallery obtains the OpenCL path while this app falls into OpenGL, and whether Gallery's dated local model file differs from this app's pinned Hugging Face file.
 
+The locally pulled Play Store Gallery file did differ from this app's pinned Hugging Face artifact:
+
+```text
+Gallery file: gemma4_2b_v09_obfus_fix_all_modalities_thinking.litertlm
+Gallery size: 2,538,766,336 bytes
+Gallery sha256: 02957360dbcd67bf4bd629271fa8f9ab318ad6d1c10593bae5e9900611669bc0
+App file: gemma-4-E2B-it.litertlm
+App expected size: 2,583,085,056 bytes
+```
+
+The public Gallery allowlist has not yet revealed a reproducible URL for the observed Play Store file. See `docs/research/gallery-model-revision.md` before changing model download configuration.
+
 ## Speculative decoding note
 
 Gallery checks model capabilities with `Capabilities(modelPath).hasSpeculativeDecodingSupport()` and can set `ExperimentalFlags.enableSpeculativeDecoding` when supported. This app does not enable speculative decoding by default yet. A later PR should add an explicit toggle only after the LiteRT-LM Kotlin API usage is compile-safe in this project.

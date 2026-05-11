@@ -10,9 +10,11 @@ class ModelDownloadRequestTest {
         val request = ModelDownloadRequest.gemma4E2B()
 
         assertEquals(GemmaModelConfig.displayName, request.displayName)
+        assertEquals(GemmaModelConfig.currentVariantId, request.variantId)
         assertEquals(GemmaModelConfig.downloadUrl, request.url)
         assertEquals(GemmaModelConfig.fileName, request.fileName)
         assertEquals(GemmaModelConfig.sizeBytes, request.expectedSizeBytes)
+        assertEquals(null, request.expectedSha256)
         assertEquals(GemmaModelConfig.galleryModelCommitHash, request.sourceRevision)
     }
 
@@ -21,9 +23,11 @@ class ModelDownloadRequestTest {
         assertThrows(IllegalArgumentException::class.java) {
             ModelDownloadRequest(
                 displayName = "test",
+                variantId = "test-variant",
                 url = "http://example.invalid/model.litertlm",
                 fileName = "model.litertlm",
                 expectedSizeBytes = 1L,
+                expectedSha256 = null,
                 sourceRevision = "revision",
             )
         }
@@ -34,9 +38,11 @@ class ModelDownloadRequestTest {
         assertThrows(IllegalArgumentException::class.java) {
             ModelDownloadRequest(
                 displayName = "test",
+                variantId = "test-variant",
                 url = "https://example.invalid/model.litertlm",
                 fileName = "model.litertlm",
                 expectedSizeBytes = 0L,
+                expectedSha256 = null,
                 sourceRevision = "revision",
             )
         }
@@ -47,10 +53,27 @@ class ModelDownloadRequestTest {
         assertThrows(IllegalArgumentException::class.java) {
             ModelDownloadRequest(
                 displayName = "test",
+                variantId = "test-variant",
                 url = "https://example.invalid/model.litertlm",
                 fileName = "model.litertlm",
                 expectedSizeBytes = 1L,
+                expectedSha256 = null,
                 sourceRevision = " ",
+            )
+        }
+    }
+
+    @Test
+    fun rejectsInvalidSha256() {
+        assertThrows(IllegalArgumentException::class.java) {
+            ModelDownloadRequest(
+                displayName = "test",
+                variantId = "test-variant",
+                url = "https://example.invalid/model.litertlm",
+                fileName = "model.litertlm",
+                expectedSizeBytes = 1L,
+                expectedSha256 = "not-a-sha",
+                sourceRevision = "revision",
             )
         }
     }

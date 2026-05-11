@@ -14,9 +14,11 @@ class ModelDownloadMetadataTest {
 
     private val request = ModelDownloadRequest(
         displayName = "test",
+        variantId = "test-variant",
         url = "https://example.invalid/model.litertlm",
         fileName = "model.litertlm",
         expectedSizeBytes = 4L,
+        expectedSha256 = null,
         sourceRevision = "revision-a",
     )
 
@@ -49,6 +51,13 @@ class ModelDownloadMetadataTest {
         val metadata = ModelDownloadMetadata.fromRequest(request)
 
         assertFalse(metadata.matches(request.copy(url = "https://example.invalid/other.litertlm")))
+    }
+
+    @Test
+    fun metadataRejectsDifferentVariant() {
+        val metadata = ModelDownloadMetadata.fromRequest(request)
+
+        assertFalse(metadata.matches(request.copy(variantId = "other-variant")))
     }
 
     @Test

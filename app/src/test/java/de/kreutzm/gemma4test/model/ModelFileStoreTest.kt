@@ -13,9 +13,11 @@ class ModelFileStoreTest {
 
     private val request = ModelDownloadRequest(
         displayName = "test",
+        variantId = "test-variant",
         url = "https://example.invalid/model.litertlm",
         fileName = "model.litertlm",
         expectedSizeBytes = 4L,
+        expectedSha256 = null,
         sourceRevision = "revision-a",
     )
 
