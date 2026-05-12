@@ -1,72 +1,63 @@
 # Image preprocessing and Gemma 4 patch count
 
-## Observed CPU/XNNPack failure
+## Current preprocessing
 
-After the backend fallback PR, the app no longer failed on the GPU/OpenGL delegate path. LiteRT-LM initialized with CPU/XNNPack and vision enabled:
+The app preserves the captured image aspect ratio and scales only when needed:
 
-```text
-MainExecutorSettings: backend: CPU
-EncoderBackend: CPU
-AdapterBackend: CPU
-max_num_images: 1
-number_of_threads: 4
-Creating Gemma4DataProcessor
-Resize image from 141x250 to 576x1056
-encoder_signature_index: 1 name: vision_280
-adapter_signature_index: 1 name: vision_adapter_280
-```
+- camera capture uses a file-backed `TakePicture()` result, not the low-resolution `TakePicturePreview()` bitmap,
+- full-resolution JPEGs are sampled during decode before final scaling,
+- no square letterboxing,
+- no crop,
+- long edge capped at `1024 px`,
+- PNG bytes are sent to LiteRT-LM,
+- single image only.
 
-However, inference still failed:
+Examples:
 
 ```text
-DYNAMIC_UPDATE_SLICE failed to prepare
-Failed to allocate tensors
-RunPrefillAsync status: INTERNAL
-Failed to invoke the compiled model
-Receive callback OnError
+4000 x 3000 -> 1024 x 768
+3000 x 4000 -> 768 x 1024
+800 x 600 -> 800 x 600
 ```
 
-The internal resize was especially important:
+This is based on S23+ GPU/OpenCL testing after optional OpenCL native libraries were declared. Letterboxing is no longer required for the working GPU path.
+
+## Earlier CPU/XNNPack failure
+
+Before GPU/OpenCL initialization was fixed, CPU/XNNPack attempts showed internal image expansion near the model patch limit:
 
 ```text
 Resize image from 141x250 to 576x1056 which will result in 2376 patches
 max_num_patches: 2520
+DYNAMIC_UPDATE_SLICE failed to prepare
+Failed to allocate tensors
 ```
 
-The patch count was close to the model/runtime limit. Very tall or very wide preview images can be internally upscaled into many patches even when the source bitmap is small.
-
-## Current mitigation
-
-For the MVP, captured images are now converted into a conservative square letterbox image before being encoded as PNG and sent to LiteRT-LM:
-
-- canvas: `512 x 512`
-- image is aspect-fit into the square,
-- background is black,
-- output is PNG bytes,
-- single image only.
-
-This is intentionally more conservative than the previous long-edge `1024 px` preprocessing.
-
-## Why letterbox instead of crop
-
-Cropping would reduce patches but can remove important image content. Letterboxing preserves the whole scene while bounding the input geometry.
+The temporary `512 x 512` letterbox path was a conservative diagnostic workaround for that CPU failure mode. It should not be treated as the preferred GPU/OpenCL input format.
 
 ## Device smoke test
 
-After installing this change:
+After installing an image-preprocessing change:
 
-1. Capture one photo.
-2. Confirm UI shows `512 x 512 px` for the prepared image.
-3. Run image description.
-4. Check logcat for LiteRT-LM's internal resize and patch count.
-5. Verify whether `DYNAMIC_UPDATE_SLICE` and `Failed to allocate tensors` still occur.
+1. Capture one landscape photo and one portrait photo through the app camera button.
+2. Confirm the UI shows an aspect-ratio-preserving prepared image, with the longer edge at `1024 px` for normal high-resolution camera photos.
+3. If the UI shows very small dimensions such as `141 x 250`, the app is still receiving a preview bitmap instead of the full file-backed camera capture.
+4. Run `GPU only`.
+5. Check logcat for:
 
-## Future knobs
+```text
+LiteRT backend initialized: GPU text + GPU vision
+LITERT_CL
+Beschreibung abgeschlossen
+```
 
-If 512 still fails, try lower square sizes in follow-up PRs:
+6. Confirm the old GPU/OpenGL failure does not return:
 
-- `448 x 448`
-- `384 x 384`
-- `336 x 336`
+```text
+OpenCL not supported on this platform. Using OpenGL instead.
+CreateSharedMemoryManager is not implemented.
+```
 
-Do not increase above `512 x 512` until a device smoke test proves the patch/memory path is stable on Samsung S23+.
+## Guardrail
+
+Do not reintroduce square letterboxing or raise the long-edge cap above `1024 px` without a Samsung S23+ GPU-only logcat comparison.

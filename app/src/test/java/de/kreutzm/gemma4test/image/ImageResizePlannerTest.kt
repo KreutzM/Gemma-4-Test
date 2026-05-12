@@ -19,20 +19,20 @@ class ImageResizePlannerTest {
     fun scalesLandscapeImageToMaxLongEdge() {
         val result = ImageResizePlanner.planScaleToMaxLongEdge(
             source = ImageSize(width = 4000, height = 3000),
-            maxLongEdgePx = 1000,
+            maxLongEdgePx = 1024,
         )
 
-        assertEquals(ImageSize(width = 1000, height = 750), result)
+        assertEquals(ImageSize(width = 1024, height = 768), result)
     }
 
     @Test
     fun scalesPortraitImageToMaxLongEdge() {
         val result = ImageResizePlanner.planScaleToMaxLongEdge(
             source = ImageSize(width = 3000, height = 4000),
-            maxLongEdgePx = 1000,
+            maxLongEdgePx = 1024,
         )
 
-        assertEquals(ImageSize(width = 750, height = 1000), result)
+        assertEquals(ImageSize(width = 768, height = 1024), result)
     }
 
     @Test
