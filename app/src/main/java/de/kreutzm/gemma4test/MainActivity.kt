@@ -1,7 +1,10 @@
 package de.kreutzm.gemma4test
 
 import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -39,6 +42,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import de.kreutzm.gemma4test.inference.GemmaBackendPolicy
 import de.kreutzm.gemma4test.image.ImagePreprocessor
 import de.kreutzm.gemma4test.inference.GemmaBackendMode
@@ -53,8 +58,10 @@ import de.kreutzm.gemma4test.ui.theme.Gemma4TestTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 private const val MODEL_METADATA_TAG = "GemmaModelMetadata"
+private const val IMAGE_PREPROCESSING_TAG = "GemmaImagePreprocessing"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,7 +86,12 @@ private fun GemmaMvpScreen() {
     var downloadState by remember { mutableStateOf<ModelDownloadState>(ModelDownloadState.Idle) }
     var inferenceState by remember { mutableStateOf<GemmaInferenceState>(GemmaInferenceState.Idle) }
     var status by remember { mutableStateOf("Bereit: Modell laden, Foto aufnehmen und lokal mit LiteRT-LM beschreiben.") }
-    var cameraPermissionGranted by remember { mutableStateOf(false) }
+    var cameraPermissionGranted by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED,
+        )
+    }
+    var pendingPhotoFile by remember { mutableStateOf<File?>(null) }
     var capturedBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var processedPngBytes by remember { mutableStateOf<ByteArray?>(null) }
     var descriptionText by remember { mutableStateOf("") }
@@ -87,20 +99,34 @@ private fun GemmaMvpScreen() {
     var backendPolicy by remember { mutableStateOf(GemmaBackendPolicy.GpuThenCpuFallback) }
 
     val cameraLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.TakePicturePreview(),
-    ) { bitmap ->
-        if (bitmap == null) {
+        ActivityResultContracts.TakePicture(),
+    ) { saved ->
+        val photoFile = pendingPhotoFile
+        if (!saved || photoFile == null || !photoFile.isFile) {
             status = "Kein Foto aufgenommen."
             return@rememberLauncherForActivityResult
         }
-        val preparedBitmap = ImagePreprocessor.letterboxToSquare(bitmap)
-        val pngBytes = ImagePreprocessor.toPngBytes(preparedBitmap)
-        capturedBitmap = preparedBitmap
-        processedPngBytes = pngBytes
-        descriptionText = ""
-        activeBackendMode = null
-        inferenceState = GemmaInferenceState.Idle
-        status = "Foto vorbereitet: ${preparedBitmap.width} x ${preparedBitmap.height} px, ${pngBytes.size} PNG-Bytes."
+        coroutineScope.launch {
+            Log.i(IMAGE_PREPROCESSING_TAG, "capturedPhotoPath=${photoFile.absolutePath}")
+            Log.i(IMAGE_PREPROCESSING_TAG, "capturedPhotoSizeBytes=${photoFile.length()}")
+            status = "Foto wird vorbereitet: ${photoFile.length()} Bytes."
+            val preparedBitmap = withContext(Dispatchers.IO) {
+                ImagePreprocessor.decodeFileScaledToMaxLongEdge(photoFile)
+            }
+            val pngBytes = withContext(Dispatchers.Default) {
+                ImagePreprocessor.toPngBytes(preparedBitmap)
+            }
+            capturedBitmap = preparedBitmap
+            processedPngBytes = pngBytes
+            descriptionText = ""
+            activeBackendMode = null
+            inferenceState = GemmaInferenceState.Idle
+            Log.i(
+                IMAGE_PREPROCESSING_TAG,
+                "preparedBitmap=${preparedBitmap.width}x${preparedBitmap.height}; pngBytes=${pngBytes.size}",
+            )
+            status = "Foto vorbereitet: ${preparedBitmap.width} x ${preparedBitmap.height} px, ${pngBytes.size} PNG-Bytes."
+        }
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -206,7 +232,11 @@ private fun GemmaMvpScreen() {
             }
             Button(
                 enabled = cameraPermissionGranted,
-                onClick = { cameraLauncher.launch(null) },
+                onClick = {
+                    val photoFile = createCameraCaptureFile(context.cacheDir)
+                    pendingPhotoFile = photoFile
+                    cameraLauncher.launch(cameraCaptureUri(context, photoFile))
+                },
             ) {
                 Text("Foto aufnehmen")
             }
@@ -329,6 +359,18 @@ private fun logModelMetadata(request: ModelDownloadRequest, modelFile: java.io.F
     Log.i(MODEL_METADATA_TAG, "actualSha256=not computed")
     Log.i(MODEL_METADATA_TAG, "modelPath=${modelFile.absolutePath}")
 }
+
+private fun createCameraCaptureFile(cacheDir: File): File {
+    val cameraDir = File(cacheDir, "camera")
+    check(cameraDir.exists() || cameraDir.mkdirs()) { "Could not create camera cache directory: ${cameraDir.absolutePath}" }
+    return File.createTempFile("gemma-capture-", ".jpg", cameraDir)
+}
+
+private fun cameraCaptureUri(context: Context, photoFile: File): Uri = FileProvider.getUriForFile(
+    context,
+    "${context.packageName}.fileprovider",
+    photoFile,
+)
 
 private fun ModelDownloadState.toUiText(): String = when (this) {
     ModelDownloadState.Idle -> "Noch nicht geladen"
