@@ -12,12 +12,16 @@ The app target is intentionally narrow:
 
 ## Current baseline
 
-This repository is a Codex-ready starter repo. It contains:
+The app now has a working Samsung S23+ baseline for Gemma 4 E2B image description:
 
-- Android project skeleton in `app/` with a Compose UI placeholder and permissions/manifests.
-- Model metadata and download target documented in `docs/research/google-ai-edge-gallery.md`.
-- Codex workflow instructions in `AGENTS.md`, `.codex/config.toml`, and `docs/codex-plan.md`.
-- A phased implementation plan in `docs/implementation-plan.md`.
+- LiteRT-LM initializes `GPU text + GPU vision` through OpenCL / `LITERT_CL`.
+- The Android manifest declares optional vendor OpenCL/GPU libraries so Android exposes them to the app process.
+- Camera capture uses a file-backed `TakePicture()` result through `FileProvider`, not `TakePicturePreview()`.
+- Image preprocessing preserves aspect ratio and caps the long edge at `1024 px`.
+- The debug UI exposes `GPU only`, `CPU only`, and `GPU then CPU fallback`.
+- The UI and logcat show the selected policy and the active initialized backend.
+
+Start new Gemma 4 E2B Android app work from `docs/device-debugging/s23-plus-known-good-baseline.md`.
 
 ## Target model
 
@@ -31,7 +35,15 @@ Use `Gemma-4-E2B-it` from the Gallery allowlist:
 
 ## Expected device
 
-Samsung Galaxy S23+ has 8 GB RAM in common configurations, so it matches the Gallery allowlist minimum for E2B but not the E4B minimum. Treat GPU as preferred, CPU as fallback, and keep token/image sizes conservative.
+Samsung Galaxy S23+ has 8 GB RAM in common configurations, so it matches the Gallery allowlist minimum for E2B but not the E4B minimum. Treat GPU as preferred and CPU as diagnostic/fallback. Keep single-image input and token/image sizes conservative.
+
+Observed S23+ GPU-only inference with a `1024 x 577` prepared image peaked near:
+
+- app `TOTAL PSS`: `3.55 GB`,
+- app `Graphics`: `2.55 GB`,
+- system GPU memory: `2.84 GB`.
+
+The device completed inference and released memory afterward, but this is already a meaningful memory load. Do not raise image size beyond `1024 px` long edge without a device memory/logcat comparison.
 
 ## Developer quick start
 

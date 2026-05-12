@@ -2,7 +2,25 @@
 
 ## Current state
 
-Samsung S23+ tests showed that the app can run Gemma-4-E2B-it LiteRT-LM image description through CPU/XNNPack, but CPU inference is slow. Earlier GPU attempts failed during LiteRT-LM delegate setup with this signature:
+Samsung S23+ tests now show that the app can run Gemma-4-E2B-it LiteRT-LM image description through GPU/OpenCL after declaring optional vendor OpenCL/GPU native libraries in `AndroidManifest.xml`.
+
+Confirmed success signature:
+
+```text
+backendPolicy=GPU only
+Trying LiteRT backend: GPU text + GPU vision
+MainExecutorSettings: backend: GPU
+EncoderBackend: GPU
+AdapterBackend: CPU
+Loaded OpenCL library with dlopen.
+Created OpenCL device from provided device id and platform id.
+Replacing ... with delegate (LITERT_CL)
+LiteRT backend initialized: GPU text + GPU vision
+Backend: GPU text + GPU vision
+Beschreibung abgeschlossen
+```
+
+Earlier GPU attempts failed during LiteRT-LM delegate setup with this signature:
 
 ```text
 OpenCL not supported on this platform. Using OpenGL instead.
@@ -11,7 +29,7 @@ UNIMPLEMENTED: CreateSharedMemoryManager is not implemented.
 Failed to initialize kernel.
 ```
 
-Later successful CPU initialization logs included:
+CPU initialization logs included:
 
 ```text
 MainExecutorSettings: backend: CPU
@@ -20,7 +38,7 @@ AdapterBackend: CPU
 max_num_images: 1
 ```
 
-This does not prove Google AI Edge Gallery uses GPU on the same S23+. Gallery may initialize GPU, or it may also fall back to CPU. The useful next test is a direct logcat comparison.
+CPU mode is useful for diagnostics, but it is not the preferred S23+ path.
 
 ## App controls
 
@@ -103,7 +121,7 @@ The key question is whether Gallery actually initializes GPU on this S23+, or wh
 
 Gallery did initialize GPU/OpenCL successfully on the same S23+ for `Gemma-4-E2B-it` Ask Image. It logged `MainExecutorSettings: backend: GPU`, `EncoderBackend: GPU`, `AdapterBackend: CPU`, `Loaded OpenCL library with dlopen`, and `Replacing ... node(s) with delegate (LITERT_CL)`.
 
-This app still failed GPU initialization with `OpenCL not supported on this platform. Using OpenGL instead` followed by `CreateSharedMemoryManager is not implemented`.
+At that time this app still failed GPU initialization with `OpenCL not supported on this platform. Using OpenGL instead` followed by `CreateSharedMemoryManager is not implemented`.
 
 See `docs/device-debugging/gallery-backend-comparison-2026-05-11.md` for the full ADB/logcat comparison. The next investigation should focus on why Gallery obtains the OpenCL path while this app falls into OpenGL, and whether Gallery's dated local model file differs from this app's pinned Hugging Face file.
 
@@ -118,6 +136,18 @@ App expected size: 2,583,085,056 bytes
 ```
 
 The public Gallery allowlist has not yet revealed a reproducible URL for the observed Play Store file. See `docs/research/gallery-model-revision.md` before changing model download configuration.
+
+## 2026-05-12 app success result
+
+PR #27 fixed the app's OpenCL initialization path by declaring optional vendor OpenCL/GPU libraries in the manifest. A later local test with the pinned app model and `GPU only` initialized `GPU text + GPU vision`, used `LITERT_CL`, and completed image description.
+
+The copied Gallery model artifact is not required for the current working app path. Keep the pinned app model unless a PR documents a reproducible model-source change and device validation.
+
+See:
+
+- `docs/device-debugging/opencl-native-library-manifest.md`
+- `docs/device-debugging/gpu-opencl-success.md`
+- `docs/device-debugging/s23-plus-known-good-baseline.md`
 
 ## Speculative decoding note
 
