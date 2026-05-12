@@ -7,6 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.util.Properties
 
 class ModelDownloadMetadataTest {
     @get:Rule
@@ -30,6 +31,24 @@ class ModelDownloadMetadataTest {
         metadata.writeTo(metadataFile)
 
         assertEquals(metadata, ModelDownloadMetadata.readFrom(metadataFile))
+    }
+
+    @Test
+    fun readsLegacyMetadataWithoutVariantId() {
+        val metadataFile = temporaryFolder.newFile("legacy.metadata")
+        Properties().apply {
+            setProperty("displayName", request.displayName)
+            setProperty("fileName", request.fileName)
+            setProperty("url", request.url)
+            setProperty("sourceRevision", request.sourceRevision)
+            setProperty("expectedSizeBytes", request.expectedSizeBytes.toString())
+        }.store(metadataFile.outputStream(), "legacy")
+
+        val metadata = ModelDownloadMetadata.readFrom(metadataFile)
+
+        assertEquals("legacy-metadata", metadata?.variantId)
+        assertTrue(metadata?.matchesLegacyRequest(request) == true)
+        assertFalse(metadata?.matches(request) == true)
     }
 
     @Test

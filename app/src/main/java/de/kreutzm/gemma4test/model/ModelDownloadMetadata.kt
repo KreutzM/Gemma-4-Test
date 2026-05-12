@@ -21,6 +21,14 @@ data class ModelDownloadMetadata(
             expectedSizeBytes == request.expectedSizeBytes &&
             expectedSha256 == request.expectedSha256
 
+    fun matchesLegacyRequest(request: ModelDownloadRequest): Boolean =
+        displayName == request.displayName &&
+            fileName == request.fileName &&
+            url == request.url &&
+            sourceRevision == request.sourceRevision &&
+            expectedSizeBytes == request.expectedSizeBytes &&
+            expectedSha256 == request.expectedSha256
+
     fun writeTo(file: File) {
         val properties = Properties().apply {
             setProperty(KEY_DISPLAY_NAME, displayName)
@@ -37,6 +45,7 @@ data class ModelDownloadMetadata(
     }
 
     companion object {
+        private const val LEGACY_VARIANT_ID = "legacy-metadata"
         private const val KEY_DISPLAY_NAME = "displayName"
         private const val KEY_VARIANT_ID = "variantId"
         private const val KEY_FILE_NAME = "fileName"
@@ -62,7 +71,7 @@ data class ModelDownloadMetadata(
                 file.inputStream().use { input -> properties.load(input) }
                 ModelDownloadMetadata(
                     displayName = properties.getProperty(KEY_DISPLAY_NAME) ?: return null,
-                    variantId = properties.getProperty(KEY_VARIANT_ID) ?: return null,
+                    variantId = properties.getProperty(KEY_VARIANT_ID) ?: LEGACY_VARIANT_ID,
                     fileName = properties.getProperty(KEY_FILE_NAME) ?: return null,
                     url = properties.getProperty(KEY_URL) ?: return null,
                     sourceRevision = properties.getProperty(KEY_SOURCE_REVISION) ?: return null,

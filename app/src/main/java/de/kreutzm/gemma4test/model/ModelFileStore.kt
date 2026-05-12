@@ -21,10 +21,15 @@ class ModelFileStore private constructor(
 
     fun hasCompleteModel(request: ModelDownloadRequest): Boolean {
         val file = modelFile(request)
-        val metadata = ModelDownloadMetadata.readFrom(metadataFile(request))
-        return file.isFile &&
-            file.length() == request.expectedSizeBytes &&
-            metadata?.matches(request) == true
+        if (!file.isFile || file.length() != request.expectedSizeBytes) return false
+
+        val metadata = ModelDownloadMetadata.readFrom(metadataFile(request)) ?: return false
+        if (metadata.matches(request)) return true
+        if (metadata.matchesLegacyRequest(request)) {
+            writeMetadata(request)
+            return true
+        }
+        return false
     }
 
     fun writeMetadata(request: ModelDownloadRequest) {
