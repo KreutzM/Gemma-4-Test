@@ -85,6 +85,7 @@ jobs:
           name: lint-report
           path: app/build/reports/lint-results-debug.html
           if-no-files-found: ignore
+          retention-days: 3
 
       - name: Upload unit test reports
         if: always()
@@ -93,6 +94,7 @@ jobs:
           name: unit-test-reports
           path: app/build/reports/tests/testDebugUnitTest
           if-no-files-found: ignore
+          retention-days: 3
 
       - name: Upload debug APK
         if: success()
@@ -101,3 +103,4 @@ jobs:
           name: gemma4test-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          retention-days: 1
