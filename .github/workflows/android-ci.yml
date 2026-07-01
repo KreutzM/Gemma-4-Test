@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Validate wrapper
         if: hashFiles('gradle/wrapper/gradle-wrapper.jar') != ''
-        uses: gradle/actions/wrapper-validation@v4
+        uses: gradle/actions/wrapper-validation@v6
       - name: Skip wrapper validation when wrapper is absent
         if: hashFiles('gradle/wrapper/gradle-wrapper.jar') == ''
         run: echo "Gradle Wrapper is not committed yet; build job will bootstrap it."
@@ -48,7 +48,7 @@ jobs:
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: 8.10.2
 
