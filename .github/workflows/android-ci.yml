@@ -78,26 +78,26 @@ jobs:
       - name: Assemble debug APK
         run: ./gradlew assembleDebug --stacktrace --no-daemon
 
-      - name: Upload lint report
-        if: always()
+      - name: Upload lint report on failure
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: lint-report
           path: app/build/reports/lint-results-debug.html
           if-no-files-found: ignore
-          retention-days: 3
+          retention-days: 1
 
-      - name: Upload unit test reports
-        if: always()
+      - name: Upload unit test reports on failure
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: unit-test-reports
           path: app/build/reports/tests/testDebugUnitTest
           if-no-files-found: ignore
-          retention-days: 3
+          retention-days: 1
 
-      - name: Upload debug APK
-        if: success()
+      - name: Upload debug APK for manual runs only
+        if: success() && github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: gemma4test-debug-apk
